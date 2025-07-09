@@ -1,0 +1,33 @@
+{
+  "name": "muz",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "res:build": "rescript",
+    "res:clean": "rescript clean",
+    "res:dev": "rescript -w",
+    "dev": "vite",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "@rescript/core": "^1.6.1",
+    "@rescript/react": "^0.13.1",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "bs-css": "^18.1.0",
+    "bs-css-emotion": "^7.1.0",
+    "rescript": "^11.1.4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@vitejs/plugin-react": "^4.6.0",
+    "jsdom": "^26.1.0",
+    "rescript-vitest": "^2.1.1",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3",
+    "vitest": "^3.2.4"
+  }
+}
