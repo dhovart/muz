@@ -1,32 +1,20 @@
 %%raw("import '@fontsource/inter'")
 
-type params = {name: string}
-
 @module("@tauri-apps/api/core")
-external invoke: (string, params) => promise<string> = "invoke"
+external invoke: (string, unit) => promise<unit> = "invoke"
 
 @react.component
 let make = () => {
-  React.useEffect(() => {
-    let invokeGreet = async () => {
-      try {
-        let greeting = await invoke(
-          "greet",
-          {
-            name: "Rescript",
-          },
-        )
-        Js.Console.log(greeting)
-      } catch {
-      | Exn.Error(error) => Js.Console.error2("Error invoking greet", error)
-      }
+  let invokePlay = async () => {
+    try {
+      await invoke("play", ())
+    } catch {
+    | Exn.Error(error) => Js.Console.error2("Error invoking play", error)
     }
-    invokeGreet()->ignore
-    None
-  }, [])
+  }
 
   <Mui.ThemeProvider theme={Theme(Theme.theme)}>
     <Mui.CssBaseline />
-    <MusicPlayer />
+    <MusicPlayer onPlayPause={() => invokePlay()->ignore} />
   </Mui.ThemeProvider>
 }

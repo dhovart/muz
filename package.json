@@ -9,7 +9,6 @@
     "res:build": "rescript",
     "res:clean": "rescript clean",
     "res:dev": "rescript -w",
-    "predev": "npm run res:clean",
     "dev": "concurrently 'vite' 'npm run res:dev'",
     "preview": "vite preview",
     "tauri": "tauri",
