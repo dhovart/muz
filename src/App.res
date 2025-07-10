@@ -1,20 +1,32 @@
+%%raw("import '@fontsource/inter'")
+
+type params = {name: string}
+
+@module("@tauri-apps/api/core")
+external invoke: (string, params) => promise<string> = "invoke"
+
 @react.component
 let make = () => {
-  let (count, setCount) = React.useState(() => 0)
+  React.useEffect(() => {
+    let invokeGreet = async () => {
+      try {
+        let greeting = await invoke(
+          "greet",
+          {
+            name: "Rescript",
+          },
+        )
+        Js.Console.log(greeting)
+      } catch {
+      | Exn.Error(error) => Js.Console.error2("Error invoking greet", error)
+      }
+    }
+    invokeGreet()->ignore
+    None
+  }, [])
 
-  <div>
-    <h1> {"Tauri + Rescript + Vite + React"->React.string} </h1>
-    <p>
-      {React.string("This is a simple template for a Vite project using ReScript.")}
-    </p>
-    <h2> {React.string("Fast Refresh Test")} </h2>
-    <Button onClick={_ => setCount(count => count + 1)}>
-      {React.string(`count is ${count->Int.toString}`)}
-    </Button>
-    <p>
-      {React.string("Edit ")}
-      <code> {React.string("src/App.res")} </code>
-      {React.string(" and save to test Fast Refresh.")}
-    </p>
-  </div>
+  <Mui.ThemeProvider theme={Theme(Theme.theme)}>
+    <Mui.CssBaseline />
+    <MusicPlayer />
+  </Mui.ThemeProvider>
 }

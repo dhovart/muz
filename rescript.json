@@ -18,7 +18,8 @@
     "@rescript/react",
     "rescript-vitest",
     "bs-css",
-    "bs-css-emotion"
+    "bs-css-emotion",
+    "@rescript-mui/material"
   ],
   "bsc-flags": [
     "-open RescriptCore"
