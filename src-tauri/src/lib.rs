@@ -1,24 +1,23 @@
-use std::{
-    sync::OnceLock,
-    sync::mpsc::{self, Sender},
-    thread,
-};
-use tauri::Builder;
+use std::sync::Arc;
 
-static AUDIO_SENDER: OnceLock<Sender<String>> = OnceLock::new();
+use crate::player::{playback::Playback, track};
+use tauri::{Builder, Manager, State};
+use tokio::sync::Mutex;
+
+mod player;
+
+struct AppState {
+    playback: Arc<Mutex<Playback>>,
+}
 
 #[tauri::command]
-fn play() {
-    println!("Playing sound...");
-    let path = "/System/Library/Sounds/Submarine.aiff".to_string();
+async fn play(state: State<'_, AppState>) -> Result<String, ()> {
+    println!("Playing track... ");
+    let track = track::Track::new("/System/Library/Sounds/Submarine.aiff");
+    let mut playback = state.playback.lock().await;
+    let _ = playback.play(track);
 
-    if let Some(sender) = AUDIO_SENDER.get() {
-        if let Err(err) = sender.send(path) {
-            eprintln!("Audio thread has shut down: {}", err);
-        }
-    } else {
-        eprintln!("Audio system not initialized!");
-    }
+    Ok("Track is playing".to_string())
 }
 
 #[tauri::command]
@@ -28,22 +27,21 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let (tx, rx) = mpsc::channel::<String>();
-    AUDIO_SENDER
-        .set(tx)
-        .expect("Audio sender initialized twice");
-
-    thread::spawn(move || {
-        let (mut manager, _backend) = awedio::start().expect("Failed to start audio manager");
-        for path in rx {
-            match awedio::sounds::open_file(&path) {
-                Ok(file) => manager.play(file),
-                Err(err) => eprintln!("Failed to open '{}': {}", path, err),
-            }
-        }
-    });
-
     Builder::default()
+        .setup(|app| {
+            // let library = library::Library::new(
+            //     std::path::PathBuf::from("/System/Library/Sounds"),
+            //     "My Music Library".to_string(),
+            // );
+
+            let app_handle = app.handle().clone();
+
+            let playback_driver = player::playback_driver::DefaultPlaybackDriver::new();
+            let playback = player::playback::Playback::create_shared(Box::new(playback_driver));
+
+            app.manage(AppState { playback });
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![greet, play])
         .run(tauri::generate_context!())
