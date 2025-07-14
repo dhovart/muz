@@ -1,3 +1,5 @@
+use std::sync::mpsc::Sender;
+
 use super::*;
 use crate::player::track::Track;
 use anyhow::Result;

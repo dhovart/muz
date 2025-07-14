@@ -2,11 +2,9 @@ use crate::player::playback_driver::{AudioCommand, PlaybackDriver};
 use crate::player::{queue::Queue, track::Track};
 
 use anyhow::{anyhow, Result};
-use std::sync::mpsc::{self, Sender};
-use std::sync::Arc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use tokio::sync::Mutex;
 
 pub enum PlaybackState {
     Playing(Duration),
@@ -59,17 +57,19 @@ impl Playback {
         };
 
         let track_path = self.current_track.clone().unwrap().path;
-        println!("Loading file: {}", track_path.display());
+        let (completion_sender, completion_receiver) = mpsc::channel();
         self.driver
-            .send_command(AudioCommand::LoadFile(track_path))?;
-        println!("Playing file");
+            .send_command(AudioCommand::Play(track_path, completion_sender))?;
         self.state = PlaybackState::Playing(Duration::from_secs(0));
         self.history.push(self.current_track.clone().unwrap());
-        //let command_sender = self.driver.get_command_sender();
-        self.driver.send_command(AudioCommand::Play(Box::new(|| {
-            println!("Playback completed, moving to next track");
-            // find some way to call self.next() or send a message to do so
-        })))?;
+
+        thread::spawn(move || {
+            if let Err(e) = completion_receiver.recv() {
+                println!("Error receiving playback completion: {e}");
+            } else {
+                println!("Playback completed for file");
+            }
+        });
 
         Ok(())
     }

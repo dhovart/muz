@@ -16,8 +16,7 @@ pub trait PlaybackDriver: Send {
 }
 
 pub enum AudioCommand {
-    LoadFile(PathBuf),
-    Play(Box<dyn FnOnce() + Send>),
+    Play(PathBuf, Sender<()>), // Completion handler
     Pause,
     Resume,
     Stop,
@@ -36,40 +35,27 @@ impl DefaultPlaybackDriver {
     pub fn new() -> impl PlaybackDriver {
         let (command_sender, command_receiver) = mpsc::channel();
 
+        // NOTE: CpalBackend is not Send, using a dedicated thread as a workaround
         thread::spawn(move || {
             let (mut manager, backend) = awedio::start().expect("Failed to start audio manager");
             let mut controller: Option<SoundController> = None;
-            let mut current_sound = None;
 
             while let Ok(cmd) = command_receiver.recv() {
                 match cmd {
-                    AudioCommand::LoadFile(path) => {
+                    AudioCommand::Play(path, completion_sender) => {
                         let (sound, ctrl) = sounds::open_file(&path)
                             .expect("Failed to open file")
                             .pausable()
                             .with_adjustable_volume()
                             .controllable();
 
-                        controller = Some(ctrl);
-                        current_sound = Some(sound);
-                    }
-                    AudioCommand::Play(completion_handler) => {
-                        if let Some(sound) = current_sound.take() {
-                            let (sound, receiver) = sound.with_completion_notifier();
+                        let (sound, notifier) = sound.with_completion_notifier();
+                        thread::spawn(move || {
+                            notifier.recv().unwrap();
+                            completion_sender.send(()).unwrap();
+                        });
 
-                            println!("spawning thread for playback completion");
-                            thread::spawn(move || {
-                                println!("blocking for playback completion");
-                                if let Err(e) = receiver.recv() {
-                                    println!("Error receiving playback completion: {e}");
-                                } else {
-                                    println!("Playback completed for file");
-                                }
-                                completion_handler();
-                            });
-
-                            manager.play(Box::new(sound));
-                        }
+                        manager.play(Box::new(sound));
                     }
                     AudioCommand::Pause => {
                         if let Some(ctrl) = controller.as_mut() {
@@ -86,7 +72,6 @@ impl DefaultPlaybackDriver {
                             ctrl.set_paused(true);
                         }
                         controller = None;
-                        current_sound = None;
                     }
                     AudioCommand::SetVolume(vol) => {
                         if let Some(ctrl) = controller.as_mut() {
