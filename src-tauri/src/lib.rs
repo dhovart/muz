@@ -12,10 +12,13 @@ struct AppState {
 #[tauri::command]
 fn play(state: State<'_, AppState>) -> Result<String, ()> {
     let track = track::Track::new("/Users/denishovart/Dev/Diskus-Main/public/IncomingCall.wav");
+    let track2 = track::Track::new("/System/Library/Sounds/Glass.aiff");
     let mut playback = state.playback.lock().unwrap();
-    let _ = playback.play(track);
+    playback.enqueue(track);
+    playback.enqueue(track2);
+    playback.play(None).unwrap();
 
-    Ok("Track is playing".to_string())
+    Ok("Playing tracks...".to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -28,7 +31,7 @@ pub fn run() {
             // );
 
             let playback_driver = DefaultPlaybackDriver::new();
-            let playback = Playback::create_shared(Box::new(playback_driver));
+            let playback = Playback::create(Box::new(playback_driver));
 
             app.manage(AppState { playback });
             Ok(())
