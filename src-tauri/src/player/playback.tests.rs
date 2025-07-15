@@ -14,7 +14,12 @@ impl TestPlaybackDriver {
 }
 
 impl PlaybackDriver for TestPlaybackDriver {
-    fn send_command(&mut self, _command: AudioCommand) -> Result<()> {
+    fn send_command(&mut self, command: AudioCommand) -> Result<()> {
+        if let AudioCommand::Play(_, playback_sender) = command {
+            // immediately notify that the track has completed
+            println!("Simulating track completion");
+            playback_sender.send(PlaybackEvent::TrackCompleted).unwrap();
+        }
         Ok(())
     }
 
@@ -114,26 +119,40 @@ fn test_previous_with_no_history() {
 fn test_play_appends_to_history() {
     let test_playback_driver = TestPlaybackDriver::new();
     let playback_arc = Playback::create(Box::new(test_playback_driver));
-    let mut playback = playback_arc.lock().unwrap();
+
     let track = Track::new("/music/song.mp3");
-    playback.enqueue(track.clone());
-    let _ = playback.play();
+    {
+        let mut playback = playback_arc.lock().unwrap();
+        playback.enqueue(track.clone());
+        let _ = playback.play();
+    }
+    // wait for the end track event notification to be processed
+    thread::sleep(Duration::from_millis(100));
+    let playback = playback_arc.lock().unwrap();
+    println!("History after play: {:?}", playback.history);
     assert_eq!(playback.history.len(), 1);
-    assert_eq!(playback.history[0], track);
+    assert_eq!(playback.history[0], track.clone());
 }
 
 #[test]
 fn test_play_multiple_tracks_appends_to_history() {
     let test_playback_driver = TestPlaybackDriver::new();
     let playback_arc = Playback::create(Box::new(test_playback_driver));
-    let mut playback = playback_arc.lock().unwrap();
+
     let track1 = Track::new("/music/song1.mp3");
     let track2 = Track::new("/music/song2.mp3");
-    playback.enqueue(track1.clone());
-    playback.enqueue(track2.clone());
-    let _ = playback.play();
-    let _ = playback.next();
+
+    {
+        let mut playback = playback_arc.lock().unwrap();
+        playback.enqueue(track1.clone());
+        playback.enqueue(track2.clone());
+        let _ = playback.play();
+    }
+    // wait for the end track event notifications to be processed
+    thread::sleep(Duration::from_millis(200));
+
+    let playback = playback_arc.lock().unwrap();
     assert_eq!(playback.history.len(), 2);
-    assert_eq!(playback.history[0], track1);
-    assert_eq!(playback.history[1], track2);
+    assert_eq!(playback.history[0], track1.clone());
+    assert_eq!(playback.history[1], track2.clone());
 }

@@ -8,6 +8,12 @@ pub struct Track {
     pub duration: Option<Duration>,
 }
 
+pub static SUPPORTED_EXTENSIONS: &[&str] = &[
+    "aac", "adpcm", "aif", "aifc", "aiff", "alac", "caf", "flac", "m4a", "m4b", "m4p", "m4r",
+    "m4v", "mka", "mkv", "mp1", "mp2", "mp3", "mp4", "oga", "ogg", "ogv", "ogx", "wav", "wave",
+    "weba", "webm",
+];
+
 impl Track {
     pub fn new<P: Into<PathBuf>>(path: P) -> Self {
         Self {

@@ -47,8 +47,14 @@ impl Playback {
             for event in event_receiver {
                 match event {
                     PlaybackEvent::TrackCompleted => {
+                        println!("Track completed event received");
                         if let Ok(mut playback) = playback_clone.lock() {
-                            println!("Track completed, moving to next track");
+                            if let Some(current_track) = playback.current_track.take() {
+                                println!("Appending {current_track:?} to history");
+                                playback.history.push(current_track);
+                            }
+
+                            println!("Playing next track");
                             playback
                                 .next()
                                 .unwrap_or_else(|e| println!("Error moving to next track: {e}"));
@@ -85,6 +91,12 @@ impl Playback {
         }
     }
 
+    pub fn enqueue_multiple(&mut self, tracks: Vec<Track>) {
+        for track in tracks {
+            self.enqueue(track);
+        }
+    }
+
     pub fn play(&mut self) -> Result<()> {
         if let PlaybackState::Paused(_) = self.state {
             println!("Resuming playback");
@@ -103,10 +115,14 @@ impl Playback {
 
         let track_path = self.current_track.clone().unwrap().path;
         self.driver.send_command(AudioCommand::Stop)?; // stop any current playback
+        println!(
+            "Sending play command for track: {:?}, {:?}",
+            track_path,
+            self.event_sender.clone()
+        );
         self.driver
             .send_command(AudioCommand::Play(track_path, self.event_sender.clone()))?;
         self.state = PlaybackState::Playing(Duration::from_secs(0));
-        self.history.push(self.current_track.clone().unwrap());
 
         Ok(())
     }
