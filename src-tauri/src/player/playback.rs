@@ -109,19 +109,13 @@ impl Playback {
             };
         }
 
-        if self.current_track.is_none() {
-            return Err(anyhow!("No track to play"));
-        }
-
-        let track_path = self.current_track.clone().unwrap().path;
         self.driver.send_command(AudioCommand::Stop)?; // stop any current playback
-        println!(
-            "Sending play command for track: {:?}, {:?}",
-            track_path,
-            self.event_sender.clone()
-        );
-        self.driver
-            .send_command(AudioCommand::Play(track_path, self.event_sender.clone()))?;
+        self.driver.send_command(AudioCommand::Play(
+            self.current_track
+                .clone()
+                .ok_or_else(|| anyhow!("No track to play"))?,
+            self.event_sender.clone(),
+        ))?;
         self.state = PlaybackState::Playing(Duration::from_secs(0));
 
         Ok(())

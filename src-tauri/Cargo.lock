@@ -2267,6 +2267,7 @@ dependencies = [
  "awedio",
  "serde",
  "serde_json",
+ "symphonia",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",

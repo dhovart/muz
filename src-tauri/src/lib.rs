@@ -1,8 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::player::{
-    library::Library, playback::Playback, playback_driver::DefaultPlaybackDriver, track,
-};
+use crate::player::{library::Library, playback::Playback, playback_driver::DefaultPlaybackDriver};
 use tauri::{Builder, Manager, State};
 
 mod player;
