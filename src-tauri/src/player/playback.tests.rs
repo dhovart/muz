@@ -29,7 +29,8 @@ fn test_play_track() {
     let playback_arc = Playback::create(Box::new(test_playback_driver));
     let mut playback = playback_arc.lock().unwrap();
     let track = Track::new("/music/song.mp3");
-    let _ = playback.play(Some(track.clone()));
+    playback.enqueue(track.clone());
+    let _ = playback.play();
     assert_eq!(playback.current_track(), Some(&track));
 }
 
@@ -39,7 +40,8 @@ fn test_stop() {
     let playback_arc = Playback::create(Box::new(test_playback_driver));
     let mut playback = playback_arc.lock().unwrap();
     let track = Track::new("/music/song.mp3");
-    let _ = playback.play(Some(track));
+    playback.enqueue(track.clone());
+    let _ = playback.play();
     playback.stop();
     assert!(playback.current_track().is_none());
 }
@@ -51,13 +53,11 @@ fn test_queue_next_track() {
     let mut playback = playback_arc.lock().unwrap();
     let track1 = Track::new("/music/song1.mp3");
     let track2 = Track::new("/music/song2.mp3");
-    let mut queue = Queue::new();
-    queue.enqueue(track1.clone());
-    queue.enqueue(track2.clone());
-    playback.queue = Some(queue);
-    let _ = playback.play(None);
+    playback.enqueue(track1.clone());
+    playback.enqueue(track2.clone());
+    let _ = playback.play();
     assert_eq!(playback.current_track(), Some(&track1));
-    let _ = playback.play(None);
+    let _ = playback.next();
     assert_eq!(playback.current_track(), Some(&track2));
 }
 
@@ -67,7 +67,8 @@ fn test_pause_and_resume() {
     let playback_arc = Playback::create(Box::new(test_playback_driver));
     let mut playback = playback_arc.lock().unwrap();
     let track = Track::new("/music/song.mp3");
-    let _ = playback.play(Some(track.clone()));
+    playback.enqueue(track.clone());
+    let _ = playback.play();
     playback.pause();
     match playback.state {
         PlaybackState::Paused(_) => (),
@@ -87,7 +88,7 @@ fn test_play_with_empty_queue() {
     let playback_arc = Playback::create(Box::new(test_playback_driver));
     let mut playback = playback_arc.lock().unwrap();
     playback.queue = Some(Queue::new());
-    let error = playback.play(None).unwrap_err();
+    let error = playback.play().unwrap_err();
     assert!(error.to_string().contains("No track to play"));
 }
 
@@ -96,7 +97,7 @@ fn test_play_without_queue() {
     let test_playback_driver = TestPlaybackDriver::new();
     let playback_arc = Playback::create(Box::new(test_playback_driver));
     let mut playback = playback_arc.lock().unwrap();
-    let error = playback.play(None).unwrap_err();
+    let error = playback.play().unwrap_err();
     assert_eq!(error.to_string(), "No track to play");
 }
 
@@ -115,7 +116,8 @@ fn test_play_appends_to_history() {
     let playback_arc = Playback::create(Box::new(test_playback_driver));
     let mut playback = playback_arc.lock().unwrap();
     let track = Track::new("/music/song.mp3");
-    let _ = playback.play(Some(track.clone()));
+    playback.enqueue(track.clone());
+    let _ = playback.play();
     assert_eq!(playback.history.len(), 1);
     assert_eq!(playback.history[0], track);
 }
@@ -127,8 +129,10 @@ fn test_play_multiple_tracks_appends_to_history() {
     let mut playback = playback_arc.lock().unwrap();
     let track1 = Track::new("/music/song1.mp3");
     let track2 = Track::new("/music/song2.mp3");
-    let _ = playback.play(Some(track1.clone()));
-    let _ = playback.play(Some(track2.clone()));
+    playback.enqueue(track1.clone());
+    playback.enqueue(track2.clone());
+    let _ = playback.play();
+    let _ = playback.next();
     assert_eq!(playback.history.len(), 2);
     assert_eq!(playback.history[0], track1);
     assert_eq!(playback.history[1], track2);

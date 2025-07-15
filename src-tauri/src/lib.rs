@@ -11,12 +11,12 @@ struct AppState {
 
 #[tauri::command]
 fn play(state: State<'_, AppState>) -> Result<String, ()> {
-    let track = track::Track::new("/Users/denishovart/Dev/Diskus-Main/public/IncomingCall.wav");
-    let track2 = track::Track::new("/System/Library/Sounds/Glass.aiff");
+    let track = track::Track::new("/System/Library/Sounds/Glass.aiff");
+    let track2 = track::Track::new("/Users/denishovart/Dev/Diskus-Main/public/IncomingCall.wav");
     let mut playback = state.playback.lock().unwrap();
     playback.enqueue(track);
     playback.enqueue(track2);
-    playback.play(None).unwrap();
+    playback.play().unwrap();
 
     Ok("Playing tracks...".to_string())
 }

@@ -1,17 +1,18 @@
-use crate::player::playback;
 use crate::player::playback_driver::{AudioCommand, PlaybackDriver};
 use crate::player::{queue::Queue, track::Track};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 pub enum PlaybackEvent {
+    FailedOpeningFile(Error),
     TrackCompleted,
     Shutdown,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum PlaybackState {
     Playing(Duration),
     Paused(Duration),
@@ -22,7 +23,7 @@ pub struct Playback {
     driver: Box<dyn PlaybackDriver>,
     state: PlaybackState,
     current_track: Option<Track>,
-    pub queue: Option<Queue>,
+    queue: Option<Queue>,
     history: Vec<Track>,
     event_sender: mpsc::Sender<PlaybackEvent>,
 }
@@ -42,7 +43,6 @@ impl Playback {
 
         let playback_clone = Arc::clone(&playback);
 
-        // Spawn the event handling thread
         thread::spawn(move || {
             for event in event_receiver {
                 match event {
@@ -50,9 +50,12 @@ impl Playback {
                         if let Ok(mut playback) = playback_clone.lock() {
                             println!("Track completed, moving to next track");
                             playback
-                                .play(None)
+                                .next()
                                 .unwrap_or_else(|e| println!("Error moving to next track: {e}"));
                         }
+                    }
+                    PlaybackEvent::FailedOpeningFile(err) => {
+                        println!("Failed to open file: {err}");
                     }
                     PlaybackEvent::Shutdown => break,
                 }
@@ -82,47 +85,35 @@ impl Playback {
         }
     }
 
-    pub fn play(&mut self, track: Option<Track>) -> Result<()> {
-        self.current_track = if let Some(queue) = &mut self.queue {
-            if let Some(track) = track {
-                let pos: Option<usize> = queue.iter().position(|t| *t == track);
-                println!("Position in queue: {pos:?}");
-                if let Some(pos) = pos {
-                    println!("Track already in queue at position: {pos}, moving item");
-                    queue.move_item(pos, 0)
-                }
-            }
+    pub fn play(&mut self) -> Result<()> {
+        if let PlaybackState::Paused(_) = self.state {
+            println!("Resuming playback");
+            return self.resume_play();
+        }
 
-            queue.dequeue()
-        } else {
-            track
-        };
+        if self.current_track.is_none() {
+            if let Some(queue) = &mut self.queue {
+                self.current_track = queue.dequeue()
+            };
+        }
 
         if self.current_track.is_none() {
             return Err(anyhow!("No track to play"));
         }
 
         let track_path = self.current_track.clone().unwrap().path;
-        let (completion_sender, completion_receiver) = mpsc::channel();
+        self.driver.send_command(AudioCommand::Stop)?; // stop any current playback
         self.driver
-            .send_command(AudioCommand::Play(track_path, completion_sender))?;
+            .send_command(AudioCommand::Play(track_path, self.event_sender.clone()))?;
         self.state = PlaybackState::Playing(Duration::from_secs(0));
         self.history.push(self.current_track.clone().unwrap());
 
-        let event_sender = self.event_sender.clone();
-
-        thread::spawn(move || {
-            if let Err(e) = completion_receiver.recv() {
-                println!("Error receiving playback completion: {e}");
-            } else {
-                println!("Playback completed for file");
-                event_sender
-                    .send(PlaybackEvent::TrackCompleted)
-                    .expect("Failed to send track completed event");
-            }
-        });
-
         Ok(())
+    }
+
+    pub fn next(&mut self) -> Result<()> {
+        self.current_track = None;
+        self.play()
     }
 
     pub fn resume_play(&mut self) -> Result<()> {
@@ -162,7 +153,8 @@ impl Playback {
 
     pub fn previous(&mut self) -> Result<()> {
         if let Some(track) = self.history.pop() {
-            self.play(Some(track))
+            self.current_track = Some(track);
+            self.play()
         } else {
             Err(anyhow!("No previous track available"))
         }
@@ -172,6 +164,14 @@ impl Playback {
         self.driver
             .send_command(AudioCommand::SetVolume(volume.clamp(0.0, 1.0)))
             .map_err(|e| anyhow!("Failed to set volume: {e}"))
+    }
+}
+
+impl Drop for Playback {
+    fn drop(&mut self) {
+        self.event_sender
+            .send(PlaybackEvent::Shutdown)
+            .expect("Failed to send shutdown event");
     }
 }
 
