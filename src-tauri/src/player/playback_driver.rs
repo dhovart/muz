@@ -23,6 +23,7 @@ pub enum AudioCommand {
     Stop,
     SetVolume(f32),
     Exit,
+    Clear,
 }
 
 pub struct DefaultPlaybackDriver {
@@ -99,6 +100,10 @@ impl DefaultPlaybackDriver {
                         if let Some(ctrl) = controller.as_mut() {
                             ctrl.set_volume(vol);
                         }
+                    }
+                    AudioCommand::Clear => {
+                        controller = None;
+                        manager.clear();
                     }
                     AudioCommand::Exit => break,
                 }

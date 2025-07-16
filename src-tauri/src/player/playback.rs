@@ -32,7 +32,7 @@ pub struct Playback {
 impl Playback {
     pub fn create(
         driver: Box<dyn PlaybackDriver>,
-        on_progress_update: impl Fn(u64) + Send,
+        on_progress_update: impl Fn(u64) + Send + 'static,
     ) -> Arc<Mutex<Self>> {
         let (event_sender, event_receiver) = mpsc::channel();
 
@@ -68,7 +68,7 @@ impl Playback {
                         println!("Failed to open file: {err}");
                     }
                     PlaybackEvent::Progress(percent) => {
-                        println!("Playback progress: {percent}");
+                        on_progress_update(percent);
                     }
                     PlaybackEvent::Shutdown => break,
                 }
@@ -116,7 +116,7 @@ impl Playback {
             };
         }
 
-        self.driver.send_command(AudioCommand::Stop)?; // stop any current playback
+        self.driver.send_command(AudioCommand::Clear)?;
         self.driver.send_command(AudioCommand::Play(
             self.current_track
                 .clone()

@@ -17,10 +17,6 @@ impl<S: Sound> ProgressUpdate<S> {
             on_update,
         }
     }
-
-    pub fn played_frames(&self) -> u64 {
-        self.samples_played / self.inner.channel_count() as u64
-    }
 }
 
 impl<S> Wrapper for ProgressUpdate<S>
@@ -48,8 +44,9 @@ impl<S: Sound> Sound for ProgressUpdate<S> {
             Ok(sample) => {
                 self.samples_played += 1;
 
-                let percent_completed = if self.total_frames > 0 {
-                    (self.played_frames() as f64 / self.total_frames as f64) * 100.0
+                let total_samples = self.total_frames * self.inner.channel_count() as u64;
+                let percent_completed = if total_samples > 0 {
+                    (self.samples_played as f64 / total_samples as f64) * 100.0
                 } else {
                     0.0
                 };

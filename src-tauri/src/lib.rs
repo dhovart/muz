@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::player::{library::Library, playback::Playback, playback_driver::DefaultPlaybackDriver};
 use serde::{Deserialize, Serialize};
-use tauri::{Builder, Emitter, Manager, State};
+use tauri::{Builder, Manager, State};
 
 mod player;
 
@@ -59,8 +59,7 @@ pub fn run() {
                 let event = ProgressEvent {
                     position_percent: progress as f64,
                 };
-                print!("Playback progress: {}%", event.position_percent);
-                // todo use a tauri channel to send progress updates through a websocket
+                println!("Playback progress: {}%", event.position_percent);
             });
 
             playback
