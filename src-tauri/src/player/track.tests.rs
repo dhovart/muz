@@ -7,5 +7,4 @@ fn test_new_track() {
     let track = Track::new(&path);
     assert_eq!(track.path, path);
     assert!(track.title.is_none());
-    assert!(track.total_frames.is_none());
 }

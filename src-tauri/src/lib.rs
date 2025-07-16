@@ -54,7 +54,9 @@ pub fn run() {
                 "My Music Library".to_string(),
             );
 
-            let playback_driver = DefaultPlaybackDriver::new();
+            let volume = 1.0; // fetch from some settings
+
+            let playback_driver = DefaultPlaybackDriver::new(volume);
             let playback = Playback::create(Box::new(playback_driver), |progress| {
                 let event = ProgressEvent {
                     position_percent: progress as f64,

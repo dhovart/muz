@@ -35,13 +35,14 @@ type SoundController =
 
 impl DefaultPlaybackDriver {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> impl PlaybackDriver {
+    pub fn new(volume: f32) -> impl PlaybackDriver {
         let (command_sender, command_receiver) = mpsc::channel();
 
         // NOTE: CpalBackend is not Send, using a dedicated thread as a workaround
         thread::spawn(move || {
             let (mut manager, backend) = awedio::start().expect("Failed to start audio manager");
             let mut controller: Option<SoundController> = None;
+            let mut volume = volume.clamp(0.0, 1.0);
 
             while let Ok(cmd) = command_receiver.recv() {
                 match cmd {
@@ -50,7 +51,7 @@ impl DefaultPlaybackDriver {
                             Ok(sound) => {
                                 let progress_sender = playback_sender.clone();
 
-                                let sound = sound.pausable().with_adjustable_volume();
+                                let sound = sound.pausable().with_adjustable_volume_of(volume);
                                 let (sound, notifier) = sound.with_completion_notifier();
 
                                 let sound = ProgressUpdate::new(
@@ -97,8 +98,9 @@ impl DefaultPlaybackDriver {
                         controller = None;
                     }
                     AudioCommand::SetVolume(vol) => {
+                        volume = vol.clamp(0.0, 1.0);
                         if let Some(ctrl) = controller.as_mut() {
-                            ctrl.set_volume(vol);
+                            ctrl.set_volume(volume);
                         }
                     }
                     AudioCommand::Clear => {
