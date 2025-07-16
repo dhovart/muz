@@ -10,6 +10,7 @@ pub enum PlaybackEvent {
     FailedOpeningFile(Error),
     TrackCompleted,
     Shutdown,
+    Progress(u64),
 }
 
 #[derive(Debug, PartialEq)]

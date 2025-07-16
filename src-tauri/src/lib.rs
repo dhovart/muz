@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::player::{library::Library, playback::Playback, playback_driver::DefaultPlaybackDriver};
+use serde::{Deserialize, Serialize};
 use tauri::{Builder, Manager, State};
 
 mod player;
@@ -9,50 +10,39 @@ struct AppState {
     playback: Arc<Mutex<Playback>>,
 }
 
-// FIXME create a single command for sending control commands to the player
+#[derive(Clone, Serialize)]
+struct ProgressEvent {
+    position_percent: f64,
+}
 
-#[tauri::command]
-fn play(state: State<'_, AppState>) -> Result<String, String> {
-    state
-        .playback
-        .lock()
-        .unwrap()
-        .play()
-        .map_err(|e| e.to_string())?;
-    Ok("Play".to_string())
+#[derive(Deserialize, Debug)]
+struct ControlPlaybackPayload {
+    pub command: String,
+    pub volume: Option<f32>,
 }
 
 #[tauri::command]
-fn pause(state: State<'_, AppState>) -> Result<String, String> {
-    state
-        .playback
-        .lock()
-        .unwrap()
-        .pause()
-        .map_err(|e| e.to_string())?;
-    Ok("Paused".to_string())
-}
+fn control_playback(
+    state: State<'_, AppState>,
+    payload: ControlPlaybackPayload,
+) -> Result<(), String> {
+    // FIXME return type. Have Playback methods return meaningful result
+    let mut playback = state.playback.lock().unwrap();
 
-#[tauri::command]
-fn next_track(state: State<'_, AppState>) -> Result<String, String> {
-    state
-        .playback
-        .lock()
-        .unwrap()
-        .next()
-        .map_err(|e| e.to_string())?;
-    Ok("Next track".to_string())
-}
-
-#[tauri::command]
-fn previous_track(state: State<'_, AppState>) -> Result<String, String> {
-    state
-        .playback
-        .lock()
-        .unwrap()
-        .previous()
-        .map_err(|e| e.to_string())?;
-    Ok("Previous track".to_string())
+    match payload.command.as_str() {
+        "Play" => playback.play().map_err(|e| e.to_string()),
+        "Pause" => playback.pause().map_err(|e| e.to_string()),
+        "Next" => playback.next().map_err(|e| e.to_string()),
+        "Previous" => playback.previous().map_err(|e| e.to_string()),
+        "SetVolume" => {
+            if let Some(volume) = payload.volume {
+                playback.set_volume(volume).map_err(|e| e.to_string())
+            } else {
+                Err("Invalid payload".to_string())
+            }
+        }
+        _ => Err("Unknown action".to_string()),
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -76,12 +66,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            play,
-            pause,
-            next_track,
-            previous_track
-        ])
+        .invoke_handler(tauri::generate_handler![control_playback])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
