@@ -48,7 +48,6 @@ impl Library {
     }
 
     pub fn delete(&mut self) -> Result<()> {
-        // remove library assets
         todo!("Implement library deletion logic");
     }
 

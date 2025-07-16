@@ -31,6 +31,7 @@ let make = (
   ~onPlayPause=unit => unit,
   ~onNext=unit => unit,
   ~onPrev=unit => unit,
+  ~onSeek=unit => unit,
 ) => {
   <Grid
     className={Styles.container}
@@ -43,7 +44,12 @@ let make = (
       <Typography variant={H6}> {React.string(title)} </Typography>
       <Typography variant={Subtitle1}> {React.string(artist)} </Typography>
     </div>
-    <Slider className={Styles.track} value=position max=duration />
+    <Slider
+      className={Styles.track}
+      value=position
+      max=duration
+      onChange={(_, value, _) => onSeek(value)->ignore}
+    />
     <div>
       <IconButton onClick={_ => onPrev()}>
         <SkipPrevious />

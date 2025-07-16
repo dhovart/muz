@@ -164,8 +164,10 @@ impl Playback {
             .map_err(|e| anyhow!("Failed to stop playback: {e}"))
     }
 
-    pub fn seek(&mut self, offset: Duration) -> Result<()> {
-        todo!("Implement seek functionality");
+    pub fn seek(&mut self, position: Duration) -> Result<()> {
+        self.driver
+            .send_command(AudioCommand::Seek(position))
+            .map_err(|e| anyhow!("Failed to seek: {e}"))
     }
 
     pub fn previous(&mut self) -> Result<()> {

@@ -17,7 +17,6 @@ impl PlaybackDriver for TestPlaybackDriver {
     fn send_command(&mut self, command: AudioCommand) -> Result<()> {
         if let AudioCommand::Play(_, playback_sender) = command {
             // immediately notify that the track has completed
-            println!("Simulating track completion");
             playback_sender.send(PlaybackEvent::TrackCompleted).unwrap();
         }
         Ok(())
@@ -129,7 +128,6 @@ fn test_play_appends_to_history() {
     // wait for the end track event notification to be processed
     thread::sleep(Duration::from_millis(100));
     let playback = playback_arc.lock().unwrap();
-    println!("History after play: {:?}", playback.history);
     assert_eq!(playback.history.len(), 1);
     assert_eq!(playback.history[0], track.clone());
 }

@@ -4,8 +4,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::MediaSourceStream;
-use symphonia::core::meta::MetadataOptions;
-use symphonia::core::meta::StandardTagKey;
+use symphonia::core::meta::{MetadataOptions, StandardTagKey};
 use symphonia::core::probe::{Hint, ProbeResult};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,7 +59,7 @@ impl Track {
         if let Some(n_frames) = track.codec_params.n_frames {
             Ok(n_frames)
         } else {
-            Err(anyhow::anyhow!("Unable to determine duration"))
+            Err(anyhow::anyhow!("Unable to determine total frames"))
         }
     }
 

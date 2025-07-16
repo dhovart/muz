@@ -2,12 +2,15 @@ use anyhow::{anyhow, Result};
 use awedio::{
     sounds::{
         self,
-        wrappers::{AdjustableVolume, CompletionNotifier, Controller, Pausable},
+        wrappers::{AdjustableVolume, CompletionNotifier, Controller, Pausable, Stoppable},
     },
     Sound,
 };
-use std::sync::mpsc::{self, Sender};
 use std::thread;
+use std::{
+    sync::mpsc::{self, Sender},
+    time::Duration,
+};
 
 use crate::player::{playback::PlaybackEvent, sound::ProgressUpdate, track::Track};
 
@@ -21,17 +24,19 @@ pub enum AudioCommand {
     Pause,
     Resume,
     Stop,
-    SetVolume(f32),
-    Exit,
     Clear,
+    SetVolume(f32),
+    Seek(Duration),
+    Exit,
 }
 
 pub struct DefaultPlaybackDriver {
     command_sender: Sender<AudioCommand>,
 }
 
-type SoundController =
-    Controller<ProgressUpdate<CompletionNotifier<AdjustableVolume<Pausable<Box<dyn Sound>>>>>>;
+type SoundController = Controller<
+    ProgressUpdate<CompletionNotifier<AdjustableVolume<Stoppable<Pausable<Box<dyn Sound>>>>>>,
+>;
 
 impl DefaultPlaybackDriver {
     #[allow(clippy::new_ret_no_self)]
@@ -51,7 +56,10 @@ impl DefaultPlaybackDriver {
                             Ok(sound) => {
                                 let progress_sender = playback_sender.clone();
 
-                                let sound = sound.pausable().with_adjustable_volume_of(volume);
+                                let sound = sound
+                                    .pausable()
+                                    .stoppable()
+                                    .with_adjustable_volume_of(volume);
                                 let (sound, notifier) = sound.with_completion_notifier();
 
                                 let sound = ProgressUpdate::new(
@@ -81,6 +89,11 @@ impl DefaultPlaybackDriver {
                             }
                         }
                     }
+                    AudioCommand::Stop => {
+                        if let Some(ctrl) = controller.as_mut() {
+                            ctrl.set_stopped();
+                        }
+                    }
                     AudioCommand::Pause => {
                         if let Some(ctrl) = controller.as_mut() {
                             ctrl.set_paused(true);
@@ -91,18 +104,13 @@ impl DefaultPlaybackDriver {
                             ctrl.set_paused(false);
                         }
                     }
-                    AudioCommand::Stop => {
-                        if let Some(ctrl) = controller.as_mut() {
-                            ctrl.set_paused(true);
-                        }
-                        controller = None;
-                    }
                     AudioCommand::SetVolume(vol) => {
                         volume = vol.clamp(0.0, 1.0);
                         if let Some(ctrl) = controller.as_mut() {
                             ctrl.set_volume(volume);
                         }
                     }
+                    AudioCommand::Seek(duration) => {}
                     AudioCommand::Clear => {
                         controller = None;
                         manager.clear();

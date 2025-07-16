@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use crate::player::{library::Library, playback::Playback, playback_driver::DefaultPlaybackDriver};
 use serde::{Deserialize, Serialize};
@@ -19,6 +22,7 @@ struct ProgressEvent {
 struct ControlPlaybackPayload {
     pub command: String,
     pub volume: Option<f32>,
+    pub duration: Option<u64>, // in milliseconds
 }
 
 #[tauri::command]
@@ -33,6 +37,9 @@ fn control_playback(
         "Play" => playback.play().map_err(|e| e.to_string()),
         "Pause" => playback.pause().map_err(|e| e.to_string()),
         "Next" => playback.next().map_err(|e| e.to_string()),
+        "Seek" => playback
+            .seek(Duration::from_millis(payload.duration.unwrap_or(0)))
+            .map_err(|e| e.to_string()),
         "Previous" => playback.previous().map_err(|e| e.to_string()),
         "SetVolume" => {
             if let Some(volume) = payload.volume {
@@ -51,17 +58,16 @@ pub fn run() {
         .setup(|app| {
             let library = Library::new(
                 std::path::PathBuf::from("/System/Library/Sounds"),
-                "My Music Library".to_string(),
+                "Library".to_string(),
             );
 
             let volume = 1.0; // fetch from some settings
 
             let playback_driver = DefaultPlaybackDriver::new(volume);
-            let playback = Playback::create(Box::new(playback_driver), |progress| {
+            let playback = Playback::create(Box::new(playback_driver), move |progress| {
                 let event = ProgressEvent {
                     position_percent: progress as f64,
                 };
-                println!("Playback progress: {}%", event.position_percent);
             });
 
             playback

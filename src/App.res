@@ -4,6 +4,11 @@ open Command
 @module("@tauri-apps/api/core")
 external invoke: (string, Js.Json.t) => promise<unit> = "invoke"
 
+// // FIXME make a functor and return different types instead of using Js.Json.t
+// type channelEvent = {data: Js.Json.t}
+// type channelType = {mutable onmessage: Js.Json.t => unit}
+// @module("@tauri-apps/api/core") @new external channel: unit => channelType = "Channel"
+
 type state = Playing | Paused | Stopped
 
 @react.component
@@ -35,6 +40,15 @@ let make = () => {
     invokePlayerCommand(SetVolume(volume))->ignore
     None
   }, [volume])
+
+  // React.useEffect(() => {
+  //   let onEvent = channel()
+  //   onEvent.onmessage = message => {
+  //     Js.Console.log(`got download event` ++ Js.Json.stringify(message))
+  //   }
+
+  //   None
+  // }, [])
 
   <Mui.ThemeProvider theme={Theme(Theme.theme)}>
     <Mui.CssBaseline />
