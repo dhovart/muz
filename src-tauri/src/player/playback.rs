@@ -30,7 +30,10 @@ pub struct Playback {
 }
 
 impl Playback {
-    pub fn create(driver: Box<dyn PlaybackDriver>) -> Arc<Mutex<Self>> {
+    pub fn create(
+        driver: Box<dyn PlaybackDriver>,
+        on_progress_update: impl Fn(u64) + Send,
+    ) -> Arc<Mutex<Self>> {
         let (event_sender, event_receiver) = mpsc::channel();
 
         let playback = Arc::new(Mutex::new(Self {
@@ -63,6 +66,9 @@ impl Playback {
                     }
                     PlaybackEvent::FailedOpeningFile(err) => {
                         println!("Failed to open file: {err}");
+                    }
+                    PlaybackEvent::Progress(percent) => {
+                        println!("Playback progress: {percent}");
                     }
                     PlaybackEvent::Shutdown => break,
                 }

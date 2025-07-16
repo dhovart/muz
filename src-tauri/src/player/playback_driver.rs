@@ -9,7 +9,7 @@ use awedio::{
 use std::sync::mpsc::{self, Sender};
 use std::thread;
 
-use crate::player::{playback::PlaybackEvent, sound::CompletionTracking, track::Track};
+use crate::player::{playback::PlaybackEvent, sound::ProgressUpdate, track::Track};
 
 pub trait PlaybackDriver: Send {
     fn send_command(&mut self, command: AudioCommand) -> Result<()>;
@@ -30,7 +30,7 @@ pub struct DefaultPlaybackDriver {
 }
 
 type SoundController =
-    Controller<CompletionTracking<CompletionNotifier<AdjustableVolume<Pausable<Box<dyn Sound>>>>>>;
+    Controller<ProgressUpdate<CompletionNotifier<AdjustableVolume<Pausable<Box<dyn Sound>>>>>>;
 
 impl DefaultPlaybackDriver {
     #[allow(clippy::new_ret_no_self)]
@@ -47,9 +47,20 @@ impl DefaultPlaybackDriver {
                     AudioCommand::Play(track, playback_sender) => {
                         match sounds::open_file(&track.path) {
                             Ok(sound) => {
+                                let progress_sender = playback_sender.clone();
+
                                 let sound = sound.pausable().with_adjustable_volume();
                                 let (sound, notifier) = sound.with_completion_notifier();
-                                let sound = CompletionTracking::new(sound, track.total_frames);
+
+                                let sound = ProgressUpdate::new(
+                                    sound,
+                                    track.total_frames,
+                                    Box::new(move |progress| {
+                                        progress_sender
+                                            .send(PlaybackEvent::Progress(progress as u64))
+                                            .unwrap();
+                                    }),
+                                );
                                 let (sound, ctrl) = sound.controllable();
 
                                 controller = Some(ctrl);

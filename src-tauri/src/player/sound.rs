@@ -1,20 +1,20 @@
 use anyhow::Result;
 use awedio::{sounds::wrappers::Wrapper, NextSample, Sound};
 
-pub struct CompletionTracking<S: Sound> {
+pub struct ProgressUpdate<S: Sound> {
     inner: S,
     total_frames: u64,
     samples_played: u64,
-    percent_completed: f64,
+    on_update: Box<dyn Fn(f64) + Send>,
 }
 
-impl<S: Sound> CompletionTracking<S> {
-    pub fn new(inner: S, total_frames: u64) -> Self {
-        CompletionTracking {
+impl<S: Sound> ProgressUpdate<S> {
+    pub fn new(inner: S, total_frames: u64, on_update: Box<dyn Fn(f64) + Send>) -> Self {
+        ProgressUpdate {
             inner,
             total_frames,
             samples_played: 0,
-            percent_completed: 0.0,
+            on_update,
         }
     }
 
@@ -23,7 +23,7 @@ impl<S: Sound> CompletionTracking<S> {
     }
 }
 
-impl<S> Wrapper for CompletionTracking<S>
+impl<S> Wrapper for ProgressUpdate<S>
 where
     S: Sound,
 {
@@ -42,17 +42,19 @@ where
     }
 }
 
-impl<S: Sound> Sound for CompletionTracking<S> {
+impl<S: Sound> Sound for ProgressUpdate<S> {
     fn next_sample(&mut self) -> Result<NextSample, awedio::Error> {
         match self.inner.next_sample() {
             Ok(sample) => {
                 self.samples_played += 1;
 
-                self.percent_completed = if self.total_frames > 0 {
+                let percent_completed = if self.total_frames > 0 {
                     (self.played_frames() as f64 / self.total_frames as f64) * 100.0
                 } else {
                     0.0
                 };
+
+                (self.on_update)(percent_completed);
 
                 Ok(sample)
             }
