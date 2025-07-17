@@ -1,5 +1,4 @@
 use crate::player::playback_driver::{AudioCommand, PlaybackDriver};
-use crate::player::track;
 use crate::player::{queue::Queue, track::Track};
 
 use anyhow::{anyhow, Error, Result};
@@ -89,7 +88,7 @@ impl Playback {
                     PlaybackEvent::Progress(percent, frames_played) => {
                         if let Ok(mut playback) = playback_clone.lock() {
                             if playback.state == PlaybackState::Playing {
-                                if percent > 2.0 && playback.current_track_added_to_history {
+                                if percent > 2.0 && !playback.current_track_added_to_history {
                                     if let Some(track) = playback.current_track.as_ref().cloned() {
                                         playback.history.push(track);
                                         playback.current_track_added_to_history = true;
@@ -156,10 +155,6 @@ impl Playback {
             self.event_sender.clone(),
         ))?;
         self.state = PlaybackState::Playing;
-
-        println!("Appending {:?} to history", self.current_track);
-        self.history.push(self.current_track.clone().unwrap());
-        self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
 
         Ok(self.state.clone())
     }
