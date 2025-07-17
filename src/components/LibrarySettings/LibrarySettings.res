@@ -18,7 +18,7 @@ let make = () => {
 
   let loadLibraryPath = async () => {
     try {
-      let path = await Tauri.invoke("get_library_path", ())
+      let path = await LibraryService.getLibraryPath()
       setLibraryPath(_ => path)
     } catch {
     | Exn.Error(e) => {
@@ -34,7 +34,7 @@ let make = () => {
       let selectedPath = await Tauri.openFolderDialog()
       switch selectedPath->Nullable.toOption {
       | Some(path) => {
-          let _ = await Tauri.invoke("set_library_path", {"path": path})
+          let _ = await LibraryService.setLibraryPath(path)
           setLibraryPath(_ => path)
           setError(_ => None)
         }
@@ -50,7 +50,7 @@ let make = () => {
   }
 
   React.useEffect(() => {
-    let _ = Tauri.invoke("rescan_library", ())->ignore
+    let _ = LibraryService.rescanLibrary()->ignore
     None
   }, [libraryPath])
 

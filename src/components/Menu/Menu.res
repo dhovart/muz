@@ -8,16 +8,35 @@ module MusicNote = {
   external make: (~className: string=?) => React.element = "default"
 }
 
+module LibraryMusic = {
+  @react.component @module("@mui/icons-material/LibraryMusic")
+  external make: (~className: string=?) => React.element = "default"
+}
+
+module QueueMusic = {
+  @react.component @module("@mui/icons-material/QueueMusic")
+  external make: (~className: string=?) => React.element = "default"
+}
+
 open Mui
 
 @react.component
-let make = (~currentPage: Route.t, ~onPageChange: Route.t => unit) => {
+let make = (~currentPage: Route.t, ~onPageChange: Route.t => unit, ~onQueueToggle: unit => unit) => {
   <div className={MenuStyles.container}>
     <Box className={MenuStyles.menuBox}>
       <IconButton 
         onClick={_ => onPageChange(Route.MusicPlayer)} 
         color={currentPage == Route.MusicPlayer ? Primary : Default}>
         <MusicNote />
+      </IconButton>
+      <IconButton 
+        onClick={_ => onPageChange(Route.Library)} 
+        color={currentPage == Route.Library ? Primary : Default}>
+        <LibraryMusic />
+      </IconButton>
+      <IconButton 
+        onClick={_ => onQueueToggle()}>
+        <QueueMusic />
       </IconButton>
       <IconButton 
         onClick={_ => onPageChange(Route.Settings)} 

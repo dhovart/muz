@@ -55,6 +55,10 @@ impl Queue {
             self.tracks.insert(to, track);
         }
     }
+
+    pub fn tracks(&self) -> Vec<Track> {
+        self.tracks.clone()
+    }
 }
 
 #[cfg(test)]

@@ -13,6 +13,8 @@ pub enum PlaybackEvent {
     TrackCompleted,
     Shutdown,
     Progress(f64, u64), // percent completed and frames played
+    TrackChanged(Option<Track>),
+    QueueChanged(Vec<Track>),
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
@@ -38,6 +40,8 @@ impl Playback {
         driver: Box<dyn PlaybackDriver>,
         on_progress_update: impl Fn(f64, u64) + Send + 'static,
         on_history_update: impl Fn(&Vec<Track>, Option<&Track>) + Send + 'static,
+        on_track_changed: impl Fn(Option<&Track>) + Send + 'static,
+        on_queue_changed: impl Fn(&Vec<Track>) + Send + 'static,
     ) -> Arc<Mutex<Self>> {
         let (event_sender, event_receiver) = mpsc::channel();
 
@@ -85,6 +89,12 @@ impl Playback {
                             on_history_update(&playback.history, playback.current_track.as_ref());
                         }
                     }
+                    PlaybackEvent::TrackChanged(track) => {
+                        on_track_changed(track.as_ref());
+                    }
+                    PlaybackEvent::QueueChanged(queue) => {
+                        on_queue_changed(&queue);
+                    }
                     PlaybackEvent::Progress(percent, frames_played) => {
                         if let Ok(mut playback) = playback_clone.lock() {
                             if playback.state == PlaybackState::Playing {
@@ -120,6 +130,11 @@ impl Playback {
     }
 
     pub fn enqueue(&mut self, track: Track) {
+        self.enqueue_internal(track);
+        self.event_sender.send(PlaybackEvent::QueueChanged(self.get_queue())).ok();
+    }
+
+    fn enqueue_internal(&mut self, track: Track) {
         println!("Enqueuing track: {track:?}");
         if let Some(queue) = &mut self.queue {
             queue.enqueue(track);
@@ -133,14 +148,16 @@ impl Playback {
 
     pub fn enqueue_multiple(&mut self, tracks: Vec<Track>) {
         for track in tracks {
-            self.enqueue(track);
+            self.enqueue_internal(track);
         }
+        self.event_sender.send(PlaybackEvent::QueueChanged(self.get_queue())).ok();
     }
 
     pub fn clear_queue(&mut self) {
         if let Some(queue) = &mut self.queue {
             queue.clear();
         }
+        self.event_sender.send(PlaybackEvent::QueueChanged(self.get_queue())).ok();
     }
 
     pub fn play(&mut self) -> Result<PlaybackState> {
@@ -148,9 +165,14 @@ impl Playback {
             return self.resume_play();
         }
 
+        let track_changed = self.current_track.is_none();
         if self.current_track.is_none() {
             if let Some(queue) = &mut self.queue {
-                self.current_track = queue.dequeue()
+                self.current_track = queue.dequeue();
+                if track_changed {
+                    self.event_sender.send(PlaybackEvent::TrackChanged(self.current_track.clone())).ok();
+                    self.event_sender.send(PlaybackEvent::QueueChanged(self.get_queue())).ok();
+                }
             };
         }
 
@@ -168,15 +190,17 @@ impl Playback {
     pub fn next(&mut self) -> Result<PlaybackState> {
         self.stop()?;
         self.current_track_added_to_history = false;
-        self.play() // will take next in queue
+        let result = self.play(); // will take next in queue and emit events
+        result
     }
 
     pub fn previous(&mut self) -> Result<PlaybackState> {
         self.state = PlaybackState::Stopped;
         self.current_track_added_to_history = false;
         self.driver.send_command(AudioCommand::Pause)?;
+        let mut history_changed = false;
         while let last = self.history.pop() {
-            self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
+            history_changed = true;
             if last.is_none() {
                 break;
             }
@@ -185,7 +209,12 @@ impl Playback {
                 break;
             }
         }
-        self.play()
+        if history_changed {
+            self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
+        }
+        let result = self.play();
+        self.event_sender.send(PlaybackEvent::TrackChanged(self.current_track.clone())).ok();
+        result
     }
 
     pub fn resume_play(&mut self) -> Result<PlaybackState> {
@@ -232,6 +261,14 @@ impl Playback {
             .send_command(AudioCommand::SetVolume(volume.clamp(0.0, 1.0)))
             .map_err(|e| anyhow!("Failed to set volume: {e}"))?;
         Ok(self.state.clone())
+    }
+
+    pub fn get_queue(&self) -> Vec<Track> {
+        self.queue.as_ref().map(|q| q.tracks()).unwrap_or_else(Vec::new)
+    }
+
+    pub fn get_current_track(&self) -> Option<Track> {
+        self.current_track.clone()
     }
 }
 

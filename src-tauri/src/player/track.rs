@@ -2,13 +2,16 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::{MetadataOptions, StandardTagKey};
 use symphonia::core::probe::{Hint, ProbeResult};
+use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Track {
+    pub id: String,
     pub path: PathBuf,
     pub title: Option<String>,
     pub total_frames: u64,
@@ -27,10 +30,18 @@ impl Track {
             eprintln!("Failed to get total frames for track: {:?}", path.as_ref());
         }
         Self {
+            id: Uuid::new_v4().to_string(),
+            title: title.or(Some(Self::default_title(path.as_ref()))),
             path: path.into(),
-            title,
             total_frames: total_frames.unwrap_or(0),
         }
+    }
+
+    pub fn default_title(path: &Path) -> String {
+        path.file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Unknown")
+            .to_string()
     }
 
     fn get_title_from_probe(probed: &mut ProbeResult) -> Result<String> {

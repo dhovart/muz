@@ -22,7 +22,7 @@ external _open: {..} => Promise.t<Nullable.t<string>> = "open"
 
 // Convenience functions
 let invokeCommand = (command: string, payload: 'a): Promise.t<'b> => {
-  invoke(command, payload)
+  invoke(command, {payload})
 }
 
 let listenToEvent = (eventName: string, callback: 'a => unit): promise<unit => unit> => {
