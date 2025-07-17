@@ -24,8 +24,7 @@ open Command
 type progressEvent = {positionPercent: int}
 type progressSubscriptionPayload = {onProgress: Tauri.channelType<progressEvent>}
 
-
-@module("@tauri-apps/api/core") @react.component
+@react.component
 let make = () => {
   let albumArtUrl = "http://picsum.photos/1200/1200"
 
