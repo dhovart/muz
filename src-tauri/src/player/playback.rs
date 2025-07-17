@@ -1,4 +1,5 @@
 use crate::player::playback_driver::{AudioCommand, PlaybackDriver};
+use crate::player::track;
 use crate::player::{queue::Queue, track::Track};
 
 use anyhow::{anyhow, Error, Result};
@@ -12,7 +13,7 @@ pub enum PlaybackEvent {
     FailedOpeningFile(Error),
     TrackCompleted,
     Shutdown,
-    Progress(f64),
+    Progress(f64, u64), // percent completed and frames played
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize)]
@@ -29,13 +30,15 @@ pub struct Playback {
     queue: Option<Queue>,
     history: Vec<Track>,
     event_sender: mpsc::Sender<PlaybackEvent>,
+    progress: f64,
+    current_track_added_to_history: bool,
 }
 
 impl Playback {
     pub fn create(
         driver: Box<dyn PlaybackDriver>,
-        on_progress_update: impl Fn(f64) + Send + 'static,
-        on_history_update: impl Fn(&Vec<Track>) + Send + 'static,
+        on_progress_update: impl Fn(f64, u64) + Send + 'static,
+        on_history_update: impl Fn(&Vec<Track>, Option<&Track>) + Send + 'static,
     ) -> Arc<Mutex<Self>> {
         let (event_sender, event_receiver) = mpsc::channel();
 
@@ -46,6 +49,8 @@ impl Playback {
             current_track: None,
             state: PlaybackState::Stopped,
             event_sender,
+            progress: 0.0,
+            current_track_added_to_history: false,
         }));
 
         let playback_clone = Arc::clone(&playback);
@@ -62,11 +67,6 @@ impl Playback {
                                 .unwrap_or_else(|e| {
                                     eprintln!("Error clearing playback: {e}");
                                 });
-                            if let Some(current_track) = playback.current_track.take() {
-                                println!("Appending {current_track:?} to history");
-                                playback.history.push(current_track);
-                                playback.event_sender.send(PlaybackEvent::HistoryUpdate);
-                            }
 
                             println!("Playing next track");
                             playback
@@ -83,13 +83,24 @@ impl Playback {
                     }
                     PlaybackEvent::HistoryUpdate => {
                         if let Ok(playback) = playback_clone.lock() {
-                            on_history_update(&playback.history);
+                            on_history_update(&playback.history, playback.current_track.as_ref());
                         }
                     }
-                    PlaybackEvent::Progress(percent) => {
-                        if let Ok(playback) = playback_clone.lock() {
+                    PlaybackEvent::Progress(percent, frames_played) => {
+                        if let Ok(mut playback) = playback_clone.lock() {
                             if playback.state == PlaybackState::Playing {
-                                on_progress_update(percent);
+                                if percent > 2.0 && playback.current_track_added_to_history {
+                                    if let Some(track) = playback.current_track.as_ref().cloned() {
+                                        playback.history.push(track);
+                                        playback.current_track_added_to_history = true;
+                                        playback
+                                            .event_sender
+                                            .send(PlaybackEvent::HistoryUpdate)
+                                            .ok();
+                                    }
+                                }
+                                playback.progress = percent;
+                                on_progress_update(percent, frames_played);
                             }
                         }
                     }
@@ -146,23 +157,34 @@ impl Playback {
         ))?;
         self.state = PlaybackState::Playing;
 
+        println!("Appending {:?} to history", self.current_track);
+        self.history.push(self.current_track.clone().unwrap());
+        self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
+
         Ok(self.state.clone())
     }
 
     pub fn next(&mut self) -> Result<PlaybackState> {
         self.stop()?;
-        self.play()
+        self.current_track_added_to_history = false;
+        self.play() // will take next in queue
     }
 
     pub fn previous(&mut self) -> Result<PlaybackState> {
-        if let Some(track) = self.history.pop() {
-            self.event_sender.send(PlaybackEvent::HistoryUpdate);
-            self.stop()?;
-            self.current_track = Some(track);
-            self.play()
-        } else {
-            Err(anyhow!("No previous track available"))
+        self.state = PlaybackState::Stopped;
+        self.current_track_added_to_history = false;
+        self.driver.send_command(AudioCommand::Pause)?;
+        while let last = self.history.pop() {
+            self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
+            if last.is_none() {
+                break;
+            }
+            if last != self.current_track {
+                self.current_track = last.clone();
+                break;
+            }
         }
+        self.play()
     }
 
     pub fn resume_play(&mut self) -> Result<PlaybackState> {
@@ -214,6 +236,7 @@ impl Playback {
 
 impl Drop for Playback {
     fn drop(&mut self) {
+        println!("Playback is being dropped, sending shutdown event");
         self.event_sender
             .send(PlaybackEvent::Shutdown)
             .expect("Failed to send shutdown event");

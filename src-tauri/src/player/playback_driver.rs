@@ -60,9 +60,9 @@ impl DefaultPlaybackDriver {
                                 let sound = ProgressUpdate::new(
                                     sound,
                                     track.total_frames,
-                                    Box::new(move |progress| {
+                                    Box::new(move |progress, frames_played| {
                                         progress_sender
-                                            .send(PlaybackEvent::Progress(progress))
+                                            .send(PlaybackEvent::Progress(progress, frames_played))
                                             .unwrap();
                                     }),
                                 );

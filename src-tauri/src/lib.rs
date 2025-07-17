@@ -5,7 +5,7 @@ use std::{
 
 use crate::player::{
     library::Library,
-    playback::{Playback, PlaybackState},
+    playback::{self, Playback, PlaybackState},
     playback_driver::DefaultPlaybackDriver,
     track::Track,
 };
@@ -30,6 +30,7 @@ struct HistoryUpdateEvent {
 #[serde(rename_all = "camelCase")]
 struct ProgressEvent {
     position_percent: f64,
+    frames_played: u64,
 }
 
 #[derive(Deserialize, Debug)]
@@ -93,9 +94,10 @@ pub fn run() {
                 Arc::new(Mutex::new(None));
             let progress_channel_clone = progress_channel.clone();
 
-            let on_progress = move |progress| {
+            let on_progress = move |progress, frames_played| {
                 let event = ProgressEvent {
                     position_percent: progress,
+                    frames_played,
                 };
                 if let Ok(channel_guard) = progress_channel_clone.lock() {
                     if let Some(ref channel) = *channel_guard {
@@ -105,9 +107,10 @@ pub fn run() {
             };
 
             let app_handle = app.handle().clone();
-            let on_history_update = move |history: &Vec<Track>| {
+            let on_history_update = move |history: &Vec<Track>, current_track: Option<&Track>| {
                 let event = HistoryUpdateEvent {
-                    has_history: !history.is_empty(),
+                    has_history: history.len() > 1
+                        || (history.len() == 1 && history.last() != current_track),
                 };
                 let _ = app_handle.emit("history-update", event);
             };

@@ -6,11 +6,11 @@ pub struct ProgressUpdate<S: Sound> {
     total_frames: u64,
     samples_played: u64,
     percent_completed: f64,
-    on_update: Box<dyn Fn(f64) + Send>,
+    on_update: Box<dyn Fn(f64, u64) + Send>,
 }
 
 impl<S: Sound> ProgressUpdate<S> {
-    pub fn new(inner: S, total_frames: u64, on_update: Box<dyn Fn(f64) + Send>) -> Self {
+    pub fn new(inner: S, total_frames: u64, on_update: Box<dyn Fn(f64, u64) + Send>) -> Self {
         ProgressUpdate {
             inner,
             total_frames,
@@ -47,6 +47,7 @@ impl<S: Sound> Sound for ProgressUpdate<S> {
                 self.samples_played += 1;
 
                 let total_samples = self.total_frames * self.inner.channel_count() as u64;
+                let frames_played = self.samples_played / self.inner.channel_count() as u64;
                 let percent_completed = if total_samples > 0 {
                     (self.samples_played as f64 / total_samples as f64) * 100.0
                 } else {
@@ -56,7 +57,7 @@ impl<S: Sound> Sound for ProgressUpdate<S> {
 
                 if self.percent_completed != percent_completed {
                     self.percent_completed = percent_completed;
-                    (self.on_update)(percent_completed);
+                    (self.on_update)(percent_completed, frames_played);
                 }
 
                 Ok(sample)
