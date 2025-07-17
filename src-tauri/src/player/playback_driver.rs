@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use awedio::{
     sounds::{
         self,
-        wrappers::{AdjustableVolume, CompletionNotifier, Controller, Pausable, Stoppable},
+        wrappers::{AdjustableVolume, CompletionNotifier, Controller, Pausable},
     },
     Sound,
 };
@@ -23,7 +23,6 @@ pub enum AudioCommand {
     Play(Track, Sender<PlaybackEvent>),
     Pause,
     Resume,
-    Stop,
     Clear,
     SetVolume(f32),
     Seek(Duration),
@@ -34,9 +33,8 @@ pub struct DefaultPlaybackDriver {
     command_sender: Sender<AudioCommand>,
 }
 
-type SoundController = Controller<
-    ProgressUpdate<CompletionNotifier<AdjustableVolume<Stoppable<Pausable<Box<dyn Sound>>>>>>,
->;
+type SoundController =
+    Controller<ProgressUpdate<CompletionNotifier<AdjustableVolume<Pausable<Box<dyn Sound>>>>>>;
 
 impl DefaultPlaybackDriver {
     #[allow(clippy::new_ret_no_self)]
@@ -56,10 +54,7 @@ impl DefaultPlaybackDriver {
                             Ok(sound) => {
                                 let progress_sender = playback_sender.clone();
 
-                                let sound = sound
-                                    .pausable()
-                                    .stoppable()
-                                    .with_adjustable_volume_of(volume);
+                                let sound = sound.pausable().with_adjustable_volume_of(volume);
                                 let (sound, notifier) = sound.with_completion_notifier();
 
                                 let sound = ProgressUpdate::new(
@@ -67,7 +62,7 @@ impl DefaultPlaybackDriver {
                                     track.total_frames,
                                     Box::new(move |progress| {
                                         progress_sender
-                                            .send(PlaybackEvent::Progress(progress as u64))
+                                            .send(PlaybackEvent::Progress(progress))
                                             .unwrap();
                                     }),
                                 );
@@ -76,8 +71,11 @@ impl DefaultPlaybackDriver {
                                 controller = Some(ctrl);
 
                                 thread::spawn(move || {
-                                    notifier.recv().unwrap();
-                                    playback_sender.send(PlaybackEvent::TrackCompleted)
+                                    if let Err(err) = notifier.recv() {
+                                        eprintln!("Error receiving notification: {err}");
+                                        return;
+                                    }
+                                    let _ = playback_sender.send(PlaybackEvent::TrackCompleted);
                                 });
 
                                 manager.play(Box::new(sound));
@@ -87,11 +85,6 @@ impl DefaultPlaybackDriver {
                                     .send(PlaybackEvent::FailedOpeningFile(err.into()))
                                     .unwrap();
                             }
-                        }
-                    }
-                    AudioCommand::Stop => {
-                        if let Some(ctrl) = controller.as_mut() {
-                            ctrl.set_stopped();
                         }
                     }
                     AudioCommand::Pause => {
@@ -110,7 +103,9 @@ impl DefaultPlaybackDriver {
                             ctrl.set_volume(volume);
                         }
                     }
-                    AudioCommand::Seek(duration) => {}
+                    AudioCommand::Seek(duration) => {
+                        todo!("Implement seek functionality");
+                    }
                     AudioCommand::Clear => {
                         controller = None;
                         manager.clear();

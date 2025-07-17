@@ -8,5 +8,11 @@ let art = style([
   marginBottom(rem(1.)),
   maxWidth(rem(20.)),
 ])
-let track = style([width(pct(100.)), marginBottom(rem(1.)), maxWidth(rem(20.))])
+let track = style([
+  width(pct(100.)),
+  marginBottom(rem(1.)),
+  maxWidth(rem(20.)),
+  selector("& .MuiSlider-thumb", [transition("none")]),
+  selector("& .MuiSlider-track", [transition("none")]),
+])
 let playButton = style([marginLeft(rem(1.)), marginRight(rem(1.))])

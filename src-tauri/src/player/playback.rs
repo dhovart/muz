@@ -2,6 +2,7 @@ use crate::player::playback_driver::{AudioCommand, PlaybackDriver};
 use crate::player::{queue::Queue, track::Track};
 
 use anyhow::{anyhow, Error, Result};
+use serde::Serialize;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -10,13 +11,13 @@ pub enum PlaybackEvent {
     FailedOpeningFile(Error),
     TrackCompleted,
     Shutdown,
-    Progress(u64),
+    Progress(f64),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub enum PlaybackState {
-    Playing(Duration),
-    Paused(Duration),
+    Playing,
+    Paused,
     Stopped,
 }
 
@@ -32,7 +33,7 @@ pub struct Playback {
 impl Playback {
     pub fn create(
         driver: Box<dyn PlaybackDriver>,
-        on_progress_update: impl Fn(u64) + Send + 'static,
+        on_progress_update: impl Fn(f64) + Send + 'static,
     ) -> Arc<Mutex<Self>> {
         let (event_sender, event_receiver) = mpsc::channel();
 
@@ -53,6 +54,12 @@ impl Playback {
                     PlaybackEvent::TrackCompleted => {
                         println!("Track completed event received");
                         if let Ok(mut playback) = playback_clone.lock() {
+                            playback
+                                .driver
+                                .send_command(AudioCommand::Clear)
+                                .unwrap_or_else(|e| {
+                                    eprintln!("Error clearing playback: {e}");
+                                });
                             if let Some(current_track) = playback.current_track.take() {
                                 println!("Appending {current_track:?} to history");
                                 playback.history.push(current_track);
@@ -61,14 +68,22 @@ impl Playback {
                             println!("Playing next track");
                             playback
                                 .next()
-                                .unwrap_or_else(|e| println!("Error moving to next track: {e}"));
+                                .map_err(|e| {
+                                    eprintln!("Error moving to next track: {e}");
+                                    e
+                                })
+                                .ok();
                         }
                     }
                     PlaybackEvent::FailedOpeningFile(err) => {
                         println!("Failed to open file: {err}");
                     }
                     PlaybackEvent::Progress(percent) => {
-                        on_progress_update(percent);
+                        if let Ok(playback) = playback_clone.lock() {
+                            if matches!(playback.state, PlaybackState::Playing) {
+                                on_progress_update(percent);
+                            }
+                        }
                     }
                     PlaybackEvent::Shutdown => break,
                 }
@@ -81,7 +96,7 @@ impl Playback {
 
     pub fn current_track(&self) -> Option<&Track> {
         match self.state {
-            PlaybackState::Playing(_) | PlaybackState::Paused(_) => self.current_track.as_ref(),
+            PlaybackState::Playing | PlaybackState::Paused => self.current_track.as_ref(),
             PlaybackState::Stopped => None,
         }
     }
@@ -104,9 +119,8 @@ impl Playback {
         }
     }
 
-    pub fn play(&mut self) -> Result<()> {
-        if let PlaybackState::Paused(_) = self.state {
-            println!("Resuming playback");
+    pub fn play(&mut self) -> Result<PlaybackState> {
+        if self.current_track.is_some() && matches!(self.state, PlaybackState::Paused) {
             return self.resume_play();
         }
 
@@ -116,62 +130,25 @@ impl Playback {
             };
         }
 
-        self.driver.send_command(AudioCommand::Clear)?;
         self.driver.send_command(AudioCommand::Play(
             self.current_track
                 .clone()
                 .ok_or_else(|| anyhow!("No track to play"))?,
             self.event_sender.clone(),
         ))?;
-        self.state = PlaybackState::Playing(Duration::from_secs(0));
+        self.state = PlaybackState::Playing;
 
-        Ok(())
+        Ok(self.state.clone())
     }
 
-    pub fn next(&mut self) -> Result<()> {
+    pub fn next(&mut self) -> Result<PlaybackState> {
         self.current_track = None;
         self.play()
     }
 
-    pub fn resume_play(&mut self) -> Result<()> {
-        match &self.state {
-            PlaybackState::Paused(duration) => {
-                self.state = PlaybackState::Playing(*duration);
-                self.driver
-                    .send_command(AudioCommand::Resume)
-                    .map_err(|e| anyhow!("Failed to resume playback: {e}"))
-            }
-            _ => Err(anyhow!("No track to resume playback")),
-        }
-    }
-
-    pub fn pause(&mut self) -> Result<()> {
-        if let PlaybackState::Playing(duration) = self.state {
-            self.state = PlaybackState::Paused(duration);
-            self.driver
-                .send_command(AudioCommand::Pause)
-                .map_err(|e| anyhow!("Failed to pause playback: {e}"))
-        } else {
-            Err(anyhow!("No track is currently playing"))
-        }
-    }
-
-    pub fn stop(&mut self) -> Result<()> {
-        self.state = PlaybackState::Stopped;
-        self.current_track = None;
-        self.driver
-            .send_command(AudioCommand::Stop)
-            .map_err(|e| anyhow!("Failed to stop playback: {e}"))
-    }
-
-    pub fn seek(&mut self, position: Duration) -> Result<()> {
-        self.driver
-            .send_command(AudioCommand::Seek(position))
-            .map_err(|e| anyhow!("Failed to seek: {e}"))
-    }
-
-    pub fn previous(&mut self) -> Result<()> {
+    pub fn previous(&mut self) -> Result<PlaybackState> {
         if let Some(track) = self.history.pop() {
+            self.driver.send_command(AudioCommand::Clear)?;
             self.current_track = Some(track);
             self.play()
         } else {
@@ -179,10 +156,50 @@ impl Playback {
         }
     }
 
-    pub fn set_volume(&mut self, volume: f32) -> Result<()> {
+    pub fn resume_play(&mut self) -> Result<PlaybackState> {
+        match &self.state {
+            PlaybackState::Paused => {
+                self.state = PlaybackState::Playing;
+                self.driver
+                    .send_command(AudioCommand::Resume)
+                    .map_err(|e| anyhow!("Failed to resume playback: {e}"))?;
+                Ok(self.state.clone())
+            }
+            _ => Err(anyhow!("No track to resume playback")),
+        }
+    }
+
+    pub fn pause(&mut self) -> Result<PlaybackState> {
+        if let PlaybackState::Playing = self.state {
+            self.state = PlaybackState::Paused;
+            self.driver
+                .send_command(AudioCommand::Pause)
+                .map_err(|e| anyhow!("Failed to pause playback: {e}"))?;
+        }
+        Ok(self.state.clone())
+    }
+
+    pub fn stop(&mut self) -> Result<PlaybackState> {
+        self.state = PlaybackState::Stopped;
+        self.current_track = None;
+        self.driver
+            .send_command(AudioCommand::Clear)
+            .map_err(|e| anyhow!("Failed to stop playback: {e}"))?;
+        Ok(self.state.clone())
+    }
+
+    pub fn seek(&mut self, position: Duration) -> Result<PlaybackState> {
+        self.driver
+            .send_command(AudioCommand::Seek(position))
+            .map_err(|e| anyhow!("Failed to seek: {e}"))?;
+        Ok(self.state.clone())
+    }
+
+    pub fn set_volume(&mut self, volume: f32) -> Result<PlaybackState> {
         self.driver
             .send_command(AudioCommand::SetVolume(volume.clamp(0.0, 1.0)))
-            .map_err(|e| anyhow!("Failed to set volume: {e}"))
+            .map_err(|e| anyhow!("Failed to set volume: {e}"))?;
+        Ok(self.state.clone())
     }
 }
 

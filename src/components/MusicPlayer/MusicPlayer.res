@@ -12,54 +12,130 @@ module PlayArrow = {
   @react.component @module("@mui/icons-material/PlayArrow")
   external make: unit => React.element = "default"
 }
-
 module Pause = {
   @react.component @module("@mui/icons-material/Pause")
   external make: unit => React.element = "default"
 }
 
+open State
 open Mui
+open Command
+
+type progressEvent = {positionPercent: int}
+type channelType<'a> = {mutable onmessage: 'a => unit}
+type progressSubscriptionPayload = {onProgress: channelType<progressEvent>}
+
+@module("@tauri-apps/api/core") @new external channel: unit => channelType<'a> = "Channel"
+@module("@tauri-apps/api/core") external invoke: (string, 'a) => Promise.t<'b> = "invoke"
+@module("@tauri-apps/api/core")
+external invokeSubscriptionToProgress: (string, progressSubscriptionPayload) => Promise.t<unit> =
+  "invoke"
 
 @react.component
-let make = (
-  ~albumArtUrl: string="http://picsum.photos/1200/1200",
-  ~title: string="Unknown Song",
-  ~artist: string="Unknown Artist",
-  ~position: float=0.0,
-  ~duration: float=0.0,
-  ~isPlaying: bool=false,
-  ~onPlayPause=unit => unit,
-  ~onNext=unit => unit,
-  ~onPrev=unit => unit,
-  ~onSeek=unit => unit,
-) => {
-  <Grid
-    className={Styles.container}
-    justifyContent=Center
-    alignItems=Center
-    container=true
-    direction=Column>
-    <img className={Styles.art} src=albumArtUrl alt="Album Art" />
-    <div>
-      <Typography variant={H6}> {React.string(title)} </Typography>
-      <Typography variant={Subtitle1}> {React.string(artist)} </Typography>
-    </div>
-    <Slider
-      className={Styles.track}
-      value=position
-      max=duration
-      onChange={(_, value, _) => onSeek(value)->ignore}
-    />
-    <div>
-      <IconButton onClick={_ => onPrev()}>
-        <SkipPrevious />
-      </IconButton>
-      <Fab className={Styles.playButton} color={Primary} onClick={_ => onPlayPause()}>
-        {isPlaying ? <Pause /> : <PlayArrow />}
-      </Fab>
-      <IconButton onClick={_ => onNext()}>
-        <SkipNext />
-      </IconButton>
-    </div>
-  </Grid>
+let make = () => {
+  let albumArtUrl = "http://picsum.photos/1200/1200"
+  let title = "Unknown Song"
+  let artist = "Unknown Artist"
+
+  let (state, setState) = React.useState(() => State.Paused)
+  let (volume, setVolume) = React.useState(() => 0.5)
+  let (position, setPosition) = React.useState(() => 0.0)
+
+  let invokePlayerCommand = async command => {
+    let payload = Command.toJsonPayload(command)
+
+    try {
+      let ret = await invoke("control_playback", payload)
+      switch ret {
+      | "Playing" => setState(_ => State.Playing)
+      | "Paused" => setState(_ => State.Paused)
+      | "Stopped" => setState(_ => State.Stopped)
+      | _ => Js.Console.warn2("Unknown playback state received", ret)
+      }
+      Js.Console.log2("Player command invoked successfully", ret)
+    } catch {
+    | Exn.Error(error) => Js.Console.error3("Error invoking player command", payload, error)
+    }
+  }
+
+  React.useEffect(() => {
+    invokePlayerCommand(SetVolume(volume))->ignore
+    None
+  }, [volume])
+
+  React.useEffect(() => {
+    let subscribeToProgress = async () => {
+      try {
+        let onProgress: channelType<progressEvent> = channel()
+        onProgress.onmessage = message => {
+          setPosition(_ => message.positionPercent->Js.Int.toFloat /. 100.0)
+        }
+        await invokeSubscriptionToProgress("subscribe_to_progress", {onProgress: onProgress})
+      } catch {
+      | Exn.Error(error) => Js.Console.error2("Error subscribing to progress updates", error)
+      }
+    }
+
+    subscribeToProgress()->ignore
+    None
+  }, [])
+
+  let handlePlayPause = React.useCallback(() => {
+    switch state {
+    | State.Playing => {
+        setState(_ => State.Paused)
+        invokePlayerCommand(Command.Pause)->ignore
+      }
+    | State.Stopped
+    | State.Paused => {
+        setState(_ => State.Playing)
+        invokePlayerCommand(Command.Play)->ignore
+      }
+    }
+  }, [state])
+
+  let handleSeek = React.useCallback(value => {
+    setPosition(_ => value)
+    invokePlayerCommand(Command.Seek(value))->ignore
+  }, [])
+
+  let handlePrev = React.useCallback(() => {
+    invokePlayerCommand(Command.Previous)->ignore
+  }, [])
+
+  let handleNext = React.useCallback(() => {
+    invokePlayerCommand(Command.Next)->ignore
+  }, [])
+
+  <StyledEngineProvider injectFirst=true>
+    <Grid
+      className={Styles.container}
+      justifyContent=Center
+      alignItems=Center
+      container=true
+      direction=Column>
+      <img className={Styles.art} src=albumArtUrl alt="Album Art" />
+      <div>
+        <Typography variant={H6}> {React.string(title)} </Typography>
+        <Typography variant={Subtitle1}> {React.string(artist)} </Typography>
+      </div>
+      <Slider
+        className={Styles.track}
+        value=position
+        max=1.0
+        onChange={(_, value, _) => handleSeek(value)->ignore}
+      />
+      <div>
+        <IconButton onClick={_ => handlePrev()->ignore}>
+          <SkipPrevious />
+        </IconButton>
+        <Fab className={Styles.playButton} color={Primary} onClick={_ => handlePlayPause()->ignore}>
+          {state == State.Playing ? <Pause /> : <PlayArrow />}
+        </Fab>
+        <IconButton onClick={_ => handleNext()->ignore}>
+          <SkipNext />
+        </IconButton>
+      </div>
+    </Grid>
+  </StyledEngineProvider>
 }
