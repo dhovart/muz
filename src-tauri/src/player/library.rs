@@ -63,6 +63,10 @@ impl Library {
             self.name = n;
         }
     }
+
+    pub fn rescan(&mut self) {
+        self.build_tracks();
+    }
 }
 
 #[cfg(test)]

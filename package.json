@@ -24,6 +24,7 @@
     "@rescript/core": "^1.6.1",
     "@rescript/react": "^0.13.1",
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.3.0",
     "@tauri-apps/plugin-opener": "^2",
     "bs-css": "^18.1.0",
     "bs-css-emotion": "^7.1.0",

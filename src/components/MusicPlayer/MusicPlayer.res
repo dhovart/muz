@@ -21,21 +21,11 @@ open State
 open Mui
 open Command
 
-type channelType<'a> = {mutable onmessage: 'a => unit}
-type eventPayload<'a> = {payload: 'a}
-type listenEventArg<'a> = {event: eventPayload<'a>}
-type listenEvent<'a> = listenEventArg<'a> => unit
-type listenCallback<'listenEvent> = 'listenEvent => unit
-
 type progressEvent = {positionPercent: int}
-type progressSubscriptionPayload = {onProgress: channelType<progressEvent>}
+type progressSubscriptionPayload = {onProgress: Tauri.channelType<progressEvent>}
 
 type historyPayload = {hasHistory: bool}
 
-@module("@tauri-apps/api/event")
-external listen: (string, listenCallback<'a>) => promise<unit => unit> = "listen"
-@module("@tauri-apps/api/core") @new external channel: unit => channelType<'a> = "Channel"
-@module("@tauri-apps/api/core") external invoke: (string, 'a) => Promise.t<'b> = "invoke"
 @module("@tauri-apps/api/core") @react.component
 let make = () => {
   let albumArtUrl = "http://picsum.photos/1200/1200"
@@ -51,7 +41,7 @@ let make = () => {
     let payload = Command.toJsonPayload(command)
 
     try {
-      let ret = await invoke("control_playback", payload)
+      let ret = await Tauri.invokeCommand("control_playback", payload)
       switch ret {
       | "Playing" => setState(_ => State.Playing)
       | "Paused" => setState(_ => State.Paused)
@@ -72,11 +62,11 @@ let make = () => {
   React.useEffect(() => {
     let subscribeToProgress = async () => {
       try {
-        let onProgress: channelType<progressEvent> = channel()
+        let onProgress: Tauri.channelType<progressEvent> = Tauri.channel()
         onProgress.onmessage = message => {
           setPosition(_ => message.positionPercent->Js.Int.toFloat /. 100.0)
         }
-        await invoke("subscribe_to_progress", {onProgress: onProgress})
+        await Tauri.invokeCommand("subscribe_to_progress", {onProgress: onProgress})
       } catch {
       | Exn.Error(error) => Js.Console.error2("Error subscribing to progress updates", error)
       }
@@ -87,9 +77,9 @@ let make = () => {
       try {
         unlisten :=
           Some(
-            await listen("history-update", event => {
-              Js.Console.log2("History update received", event)
-              setHasHistory(_ => event.payload.hasHistory)
+            await Tauri.listenToEvent("history-update", (payload: historyPayload) => {
+              Js.Console.log2("History update received", payload)
+              setHasHistory(_ => payload.hasHistory)
             }),
           )
       } catch {
@@ -141,18 +131,18 @@ let make = () => {
 
   <StyledEngineProvider injectFirst=true>
     <Grid
-      className={Styles.container}
+      className={MusicPlayerStyles.container}
       justifyContent=Center
       alignItems=Center
       container=true
       direction=Column>
-      <img className={Styles.art} src=albumArtUrl alt="Album Art" />
+      <img className={MusicPlayerStyles.art} src=albumArtUrl alt="Album Art" />
       <div>
         <Typography variant={H6}> {React.string(title)} </Typography>
         <Typography variant={Subtitle1}> {React.string(artist)} </Typography>
       </div>
       <Slider
-        className={Styles.track}
+        className={MusicPlayerStyles.track}
         value=position
         max=1.0
         onChange={(_, value, _) => handleSeek(value)->ignore}
@@ -161,7 +151,10 @@ let make = () => {
         <IconButton onClick={_ => handlePrev()->ignore} disabled={!hasHistory}>
           <SkipPrevious />
         </IconButton>
-        <Fab className={Styles.playButton} color={Primary} onClick={_ => handlePlayPause()->ignore}>
+        <Fab
+          className={MusicPlayerStyles.playButton}
+          color={Primary}
+          onClick={_ => handlePlayPause()->ignore}>
           {state == State.Playing ? <Pause /> : <PlayArrow />}
         </Fab>
         <IconButton onClick={_ => handleNext()->ignore}>

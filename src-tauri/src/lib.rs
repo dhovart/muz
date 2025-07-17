@@ -13,11 +13,16 @@ use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use tauri::{ipc::Channel, Builder, Emitter, Manager, State};
 
+mod config;
 mod player;
+
+use config::AppConfig;
 
 struct AppState {
     playback: Arc<Mutex<Playback>>,
     progress_channel: Arc<Mutex<Option<Channel<ProgressEvent>>>>,
+    config: Arc<Mutex<AppConfig>>,
+    library: Arc<Mutex<Library>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -81,14 +86,58 @@ fn control_playback(
     }
 }
 
+#[tauri::command]
+fn get_library_path(state: State<'_, AppState>) -> Result<String, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    Ok(config.library_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn set_library_path(
+    state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
+    path: String,
+) -> Result<(), String> {
+    let mut config = state.config.lock().map_err(|e| e.to_string())?;
+    let new_path = std::path::PathBuf::from(&path);
+
+    config
+        .update_library_path(new_path.clone())
+        .map_err(|e| e.to_string())?;
+    config.save(&app_handle).map_err(|e| e.to_string())?;
+
+    // Update library path and rescan
+    let mut library = state.library.lock().map_err(|e| e.to_string())?;
+    library.update(Some(new_path), None);
+    library.rescan();
+
+    // Update playback queue with new tracks
+    let mut playback = state.playback.lock().map_err(|e| e.to_string())?;
+    playback.clear_queue();
+    playback.enqueue_multiple(library.get_tracks());
+
+    Ok(())
+}
+
+#[tauri::command]
+fn rescan_library(state: State<'_, AppState>) -> Result<(), String> {
+    let mut library = state.library.lock().map_err(|e| e.to_string())?;
+    library.rescan();
+
+    // Update playback queue with rescanned tracks
+    let mut playback = state.playback.lock().map_err(|e| e.to_string())?;
+    playback.clear_queue();
+    playback.enqueue_multiple(library.get_tracks());
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     Builder::default()
         .setup(|app| {
-            let library = Library::new(
-                std::path::PathBuf::from("/System/Library/Sounds"),
-                "Library".to_string(),
-            );
+            let config = AppConfig::load(app.handle()).unwrap_or_default();
+            let library = Library::new(config.library_path.clone(), "Library".to_string());
 
             let progress_channel: Arc<Mutex<Option<Channel<ProgressEvent>>>> =
                 Arc::new(Mutex::new(None));
@@ -128,13 +177,19 @@ pub fn run() {
             app.manage(AppState {
                 playback,
                 progress_channel,
+                config: Arc::new(Mutex::new(config)),
+                library: Arc::new(Mutex::new(library)),
             });
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             control_playback,
-            subscribe_to_progress
+            subscribe_to_progress,
+            get_library_path,
+            set_library_path,
+            rescan_library
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

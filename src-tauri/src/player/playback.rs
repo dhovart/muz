@@ -137,6 +137,12 @@ impl Playback {
         }
     }
 
+    pub fn clear_queue(&mut self) {
+        if let Some(queue) = &mut self.queue {
+            queue.clear();
+        }
+    }
+
     pub fn play(&mut self) -> Result<PlaybackState> {
         if self.current_track.is_some() && self.state == PlaybackState::Paused {
             return self.resume_play();
