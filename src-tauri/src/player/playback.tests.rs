@@ -75,13 +75,13 @@ fn test_pause_and_resume() {
     let _ = playback.play();
     playback.pause();
     match playback.state {
-        PlaybackState::Paused(_) => (),
+        PlaybackState::Paused => (),
         _ => panic!("playback should be paused"),
     }
     let result = playback.resume_play();
     assert!(result.is_ok());
     match playback.state {
-        PlaybackState::Playing(_) => (),
+        PlaybackState::Playing => (),
         _ => panic!("playback should be playing after resume"),
     }
 }
