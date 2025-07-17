@@ -1,11 +1,11 @@
 open CssJs
 open CssJs.Types.Time
 
-let container = style([padding(px(16)), height(vh(100.0)), overflowY(#auto)])
+let container = style([padding(rem(1.)), height(vh(100.0)), overflowY(#auto)])
 
 let header = style([
   display(#flex),
   justifyContent(#spaceBetween),
   alignItems(#center),
-  marginBottom(px(16)),
+  marginBottom(rem(1.)),
 ])

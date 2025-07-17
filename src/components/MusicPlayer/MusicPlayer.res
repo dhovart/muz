@@ -24,16 +24,12 @@ open Command
 type progressEvent = {positionPercent: int}
 type progressSubscriptionPayload = {onProgress: Tauri.channelType<progressEvent>}
 
-type historyPayload = {hasHistory: bool}
 
 @module("@tauri-apps/api/core") @react.component
 let make = () => {
   let albumArtUrl = "http://picsum.photos/1200/1200"
 
   let (state, setState) = React.useState(() => State.Paused)
-  let (volume, _setVolume) = React.useState(() => 0.5)
-  let (position, setPosition) = React.useState(() => 0.0)
-  let (hasHistory, setHasHistory) = React.useState(() => false)
   let playerState = PlayerContext.usePlayer()
 
   let invokePlayerCommand = async command => {
@@ -52,50 +48,10 @@ let make = () => {
   }
 
   React.useEffect(() => {
-    invokePlayerCommand(SetVolume(volume))->ignore
+    invokePlayerCommand(SetVolume(playerState.volume))->ignore
     None
-  }, [volume])
+  }, [playerState.volume])
 
-  React.useEffect(() => {
-    let subscribeToProgress = async () => {
-      try {
-        await TrackService.subscribeToProgress(message => {
-          setPosition(_ => message.positionPercent->Js.Int.toFloat /. 100.0)
-        })
-      } catch {
-      | Exn.Error(error) => Js.Console.error2("Error subscribing to progress updates", error)
-      }
-    }
-
-    let unlisten = ref(None)
-    let listenToHistory = async () => {
-      try {
-        unlisten :=
-          Some(
-            await Tauri.listenToEvent("history-update", (payload: historyPayload) => {
-              Js.Console.log2("History update received", payload)
-              setHasHistory(_ => payload.hasHistory)
-            }),
-          )
-      } catch {
-      | Exn.Error(error) => Js.Console.error2("Error listening to history updates", error)
-      }
-    }
-
-    subscribeToProgress()->ignore
-    listenToHistory()->ignore
-
-    Some(
-      () => {
-        if unlisten.contents != None {
-          switch unlisten.contents {
-          | Some(unlistenFn) => unlistenFn()->ignore
-          | _ => ()
-          }
-        }
-      },
-    )
-  }, [])
 
   let handlePlayPause = React.useCallback(() => {
     switch state {
@@ -112,7 +68,6 @@ let make = () => {
   }, [state])
 
   let handleSeek = React.useCallback(value => {
-    setPosition(_ => value)
     invokePlayerCommand(Command.Seek(value))->ignore
   }, [])
 
@@ -145,12 +100,12 @@ let make = () => {
       </div>
       <Slider
         className={MusicPlayerStyles.track}
-        value=position
+        value=playerState.position
         max=1.0
         onChange={(_, value, _) => handleSeek(value)->ignore}
       />
       <div>
-        <IconButton onClick={_ => handlePrev()->ignore} disabled={!hasHistory}>
+        <IconButton onClick={_ => handlePrev()->ignore} disabled={!playerState.hasHistory}>
           <SkipPrevious />
         </IconButton>
         <Fab

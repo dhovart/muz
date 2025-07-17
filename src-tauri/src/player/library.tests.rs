@@ -8,7 +8,6 @@ fn test_new_library_initialization() {
     let library = Library::new(path.clone(), name.clone());
     assert_eq!(library.path, path);
     assert_eq!(library.name, name);
-    // tracks should be initialized (empty if no files)
     assert!(library.tracks.is_empty());
 }
 

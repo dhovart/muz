@@ -15,6 +15,7 @@ let make = () => {
   let (libraryPath, setLibraryPath) = React.useState(() => "")
   let (isLoading, setIsLoading) = React.useState(() => false)
   let (error, setError) = React.useState(() => None)
+  let player = PlayerContext.usePlayer()
 
   let loadLibraryPath = async () => {
     try {
@@ -50,7 +51,7 @@ let make = () => {
   }
 
   React.useEffect(() => {
-    let _ = LibraryService.rescanLibrary()->ignore
+    let _ = LibraryService.rescanLibrary(~onRescan=Some(player.cleanupListeners))->ignore
     None
   }, [libraryPath])
 

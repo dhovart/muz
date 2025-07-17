@@ -10,7 +10,7 @@ let make = () => {
   }
 
   let handleQueueToggle = () => {
-    setIsQueueDrawerOpen(prev => !prev)
+    setIsQueueDrawerOpen(isOpen => !isOpen)
   }
 
   let handleQueueClose = () => {
@@ -21,6 +21,9 @@ let make = () => {
     switch action {
     | SetCurrentTrack(track) => {...state, currentTrack: track}
     | SetQueue(queue) => {...state, queue}
+    | SetHasHistory(hasHistory) => {...state, hasHistory}
+    | SetPosition(position) => {...state, position}
+    | SetVolume(volume) => {...state, volume}
     }
   }
 
@@ -29,6 +32,9 @@ let make = () => {
     {
       currentTrack: None,
       queue: [],
+      hasHistory: false,
+      position: 0.0,
+      volume: 0.5,
     },
   )
 

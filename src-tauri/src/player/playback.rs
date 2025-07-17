@@ -26,10 +26,10 @@ pub enum PlaybackState {
 
 pub struct Playback {
     driver: Box<dyn PlaybackDriver>,
-    state: PlaybackState,
+    pub state: PlaybackState,
     current_track: Option<Track>,
     queue: Option<Queue>,
-    history: Vec<Track>,
+    pub history: Vec<Track>,
     event_sender: mpsc::Sender<PlaybackEvent>,
     progress: f64,
     current_track_added_to_history: bool,

@@ -1,6 +1,4 @@
 @react.component
 let make = () => {
-  <>
-    <LibrarySettings />
-  </>
+  <LibrarySettings />
 }

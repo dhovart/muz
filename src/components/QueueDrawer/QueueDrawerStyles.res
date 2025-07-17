@@ -1,12 +1,12 @@
 open CssJs
 
-let drawerContent = style([width(px(400)), padding(px(16)), height(vh(100.0)), overflowY(#auto)])
+let drawerContent = style([width(px(400)), padding(rem(1.)), height(vh(100.0)), overflowY(#auto)])
 
 let header = style([
   display(#flex),
   justifyContent(#spaceBetween),
   alignItems(#center),
-  marginBottom(px(16)),
+  marginBottom(rem(1.)),
 ])
 
 let emptyState = style([

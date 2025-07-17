@@ -150,7 +150,6 @@ fn get_library_tracks(state: State<'_, AppState>) -> Result<Vec<Track>, String> 
     Ok(library.get_tracks())
 }
 
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     Builder::default()
@@ -177,7 +176,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             let app_handle_track = app_handle.clone();
             let app_handle_queue = app_handle.clone();
-            
+
             let on_history_update = move |history: &Vec<Track>, current_track: Option<&Track>| {
                 let event = HistoryUpdateEvent {
                     has_history: history.len() > 1
@@ -185,14 +184,14 @@ pub fn run() {
                 };
                 let _ = app_handle.emit("history-update", event);
             };
-            
+
             let on_track_changed = move |track: Option<&Track>| {
                 let event = TrackChangedEvent {
                     track: track.cloned(),
                 };
                 let _ = app_handle_track.emit("track-changed", event);
             };
-            
+
             let on_queue_changed = move |queue: &Vec<Track>| {
                 let event = QueueChangedEvent {
                     queue: queue.clone(),
@@ -211,15 +210,12 @@ pub fn run() {
             );
 
             let tracks = library.get_tracks();
-            playback
-                .lock()
-                .unwrap()
-                .enqueue_multiple(tracks.clone());
-            
+            playback.lock().unwrap().enqueue_multiple(tracks.clone());
+
             // Emit initial events
             let initial_track_event = TrackChangedEvent { track: None };
             let _ = app.emit("track-changed", initial_track_event);
-            
+
             let initial_queue_event = QueueChangedEvent { queue: tracks };
             let _ = app.emit("queue-changed", initial_queue_event);
 
