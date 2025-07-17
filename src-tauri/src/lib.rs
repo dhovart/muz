@@ -7,16 +7,23 @@ use crate::player::{
     library::Library,
     playback::{Playback, PlaybackState},
     playback_driver::DefaultPlaybackDriver,
+    track::Track,
 };
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
-use tauri::{ipc::Channel, Builder, Manager, State};
+use tauri::{ipc::Channel, Builder, Emitter, Manager, State};
 
 mod player;
 
 struct AppState {
     playback: Arc<Mutex<Playback>>,
     progress_channel: Arc<Mutex<Option<Channel<ProgressEvent>>>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct HistoryUpdateEvent {
+    has_history: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -29,7 +36,7 @@ struct ProgressEvent {
 struct ControlPlaybackPayload {
     pub command: String,
     pub volume: Option<f32>,
-    pub duration: Option<u64>, // in milliseconds
+    pub seek_position: Option<u64>, // in milliseconds
 }
 
 #[tauri::command]
@@ -59,7 +66,7 @@ fn control_playback(
         "Pause" => playback.pause().map_err(PlaybackError::from),
         "Next" => playback.next().map_err(PlaybackError::from),
         "Seek" => playback
-            .seek(Duration::from_millis(payload.duration.unwrap_or(0)))
+            .seek(Duration::from_millis(payload.seek_position.unwrap_or(0)))
             .map_err(PlaybackError::from),
         "Previous" => playback.previous().map_err(PlaybackError::from),
         "SetVolume" => {
@@ -86,9 +93,7 @@ pub fn run() {
                 Arc::new(Mutex::new(None));
             let progress_channel_clone = progress_channel.clone();
 
-            let volume = 1.0; // fetch from some settings
-            let playback_driver = DefaultPlaybackDriver::new(volume);
-            let playback = Playback::create(Box::new(playback_driver), move |progress| {
+            let on_progress = move |progress| {
                 let event = ProgressEvent {
                     position_percent: progress,
                 };
@@ -97,7 +102,20 @@ pub fn run() {
                         let _ = channel.send(event);
                     }
                 }
-            });
+            };
+
+            let app_handle = app.handle().clone();
+            let on_history_update = move |history: &Vec<Track>| {
+                let event = HistoryUpdateEvent {
+                    has_history: !history.is_empty(),
+                };
+                let _ = app_handle.emit("history-update", event);
+            };
+
+            let volume = 1.0; // fetch from some settings
+            let playback_driver = DefaultPlaybackDriver::new(volume);
+            let playback =
+                Playback::create(Box::new(playback_driver), on_progress, on_history_update);
 
             playback
                 .lock()

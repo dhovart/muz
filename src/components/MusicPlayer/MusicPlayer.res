@@ -21,17 +21,22 @@ open State
 open Mui
 open Command
 
-type progressEvent = {positionPercent: int}
 type channelType<'a> = {mutable onmessage: 'a => unit}
+type eventPayload<'a> = {payload: 'a}
+type listenEventArg<'a> = {event: eventPayload<'a>}
+type listenEvent<'a> = listenEventArg<'a> => unit
+type listenCallback<'listenEvent> = 'listenEvent => unit
+
+type progressEvent = {positionPercent: int}
 type progressSubscriptionPayload = {onProgress: channelType<progressEvent>}
 
+type historyPayload = {hasHistory: bool}
+
+@module("@tauri-apps/api/event")
+external listen: (string, listenCallback<'a>) => promise<unit => unit> = "listen"
 @module("@tauri-apps/api/core") @new external channel: unit => channelType<'a> = "Channel"
 @module("@tauri-apps/api/core") external invoke: (string, 'a) => Promise.t<'b> = "invoke"
-@module("@tauri-apps/api/core")
-external invokeSubscriptionToProgress: (string, progressSubscriptionPayload) => Promise.t<unit> =
-  "invoke"
-
-@react.component
+@module("@tauri-apps/api/core") @react.component
 let make = () => {
   let albumArtUrl = "http://picsum.photos/1200/1200"
   let title = "Unknown Song"
@@ -40,6 +45,7 @@ let make = () => {
   let (state, setState) = React.useState(() => State.Paused)
   let (volume, setVolume) = React.useState(() => 0.5)
   let (position, setPosition) = React.useState(() => 0.0)
+  let (hasHistory, setHasHistory) = React.useState(() => false)
 
   let invokePlayerCommand = async command => {
     let payload = Command.toJsonPayload(command)
@@ -70,14 +76,40 @@ let make = () => {
         onProgress.onmessage = message => {
           setPosition(_ => message.positionPercent->Js.Int.toFloat /. 100.0)
         }
-        await invokeSubscriptionToProgress("subscribe_to_progress", {onProgress: onProgress})
+        await invoke("subscribe_to_progress", {onProgress: onProgress})
       } catch {
       | Exn.Error(error) => Js.Console.error2("Error subscribing to progress updates", error)
       }
     }
 
+    let unlisten = ref(None)
+    let listenToHistory = async () => {
+      try {
+        unlisten :=
+          Some(
+            await listen("history-update", event => {
+              Js.Console.log2("History update received", event)
+              setHasHistory(_ => event.payload.hasHistory)
+            }),
+          )
+      } catch {
+      | Exn.Error(error) => Js.Console.error2("Error listening to history updates", error)
+      }
+    }
+
     subscribeToProgress()->ignore
-    None
+    listenToHistory()->ignore
+
+    Some(
+      () => {
+        if unlisten.contents != None {
+          switch unlisten.contents {
+          | Some(unlistenFn) => unlistenFn()->ignore
+          | _ => ()
+          }
+        }
+      },
+    )
   }, [])
 
   let handlePlayPause = React.useCallback(() => {
@@ -126,7 +158,7 @@ let make = () => {
         onChange={(_, value, _) => handleSeek(value)->ignore}
       />
       <div>
-        <IconButton onClick={_ => handlePrev()->ignore}>
+        <IconButton onClick={_ => handlePrev()->ignore} disabled={!hasHistory}>
           <SkipPrevious />
         </IconButton>
         <Fab className={Styles.playButton} color={Primary} onClick={_ => handlePlayPause()->ignore}>

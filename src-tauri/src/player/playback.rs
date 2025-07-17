@@ -8,6 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 pub enum PlaybackEvent {
+    HistoryUpdate,
     FailedOpeningFile(Error),
     TrackCompleted,
     Shutdown,
@@ -34,6 +35,7 @@ impl Playback {
     pub fn create(
         driver: Box<dyn PlaybackDriver>,
         on_progress_update: impl Fn(f64) + Send + 'static,
+        on_history_update: impl Fn(&Vec<Track>) + Send + 'static,
     ) -> Arc<Mutex<Self>> {
         let (event_sender, event_receiver) = mpsc::channel();
 
@@ -63,6 +65,7 @@ impl Playback {
                             if let Some(current_track) = playback.current_track.take() {
                                 println!("Appending {current_track:?} to history");
                                 playback.history.push(current_track);
+                                playback.event_sender.send(PlaybackEvent::HistoryUpdate);
                             }
 
                             println!("Playing next track");
@@ -78,9 +81,14 @@ impl Playback {
                     PlaybackEvent::FailedOpeningFile(err) => {
                         println!("Failed to open file: {err}");
                     }
+                    PlaybackEvent::HistoryUpdate => {
+                        if let Ok(playback) = playback_clone.lock() {
+                            on_history_update(&playback.history);
+                        }
+                    }
                     PlaybackEvent::Progress(percent) => {
                         if let Ok(playback) = playback_clone.lock() {
-                            if matches!(playback.state, PlaybackState::Playing) {
+                            if playback.state == PlaybackState::Playing {
                                 on_progress_update(percent);
                             }
                         }
@@ -120,7 +128,7 @@ impl Playback {
     }
 
     pub fn play(&mut self) -> Result<PlaybackState> {
-        if self.current_track.is_some() && matches!(self.state, PlaybackState::Paused) {
+        if self.current_track.is_some() && self.state == PlaybackState::Paused {
             return self.resume_play();
         }
 
@@ -142,13 +150,14 @@ impl Playback {
     }
 
     pub fn next(&mut self) -> Result<PlaybackState> {
-        self.current_track = None;
+        self.stop()?;
         self.play()
     }
 
     pub fn previous(&mut self) -> Result<PlaybackState> {
         if let Some(track) = self.history.pop() {
-            self.driver.send_command(AudioCommand::Pause)?; // FIXME replace by Stop
+            self.event_sender.send(PlaybackEvent::HistoryUpdate);
+            self.stop()?;
             self.current_track = Some(track);
             self.play()
         } else {
@@ -183,7 +192,7 @@ impl Playback {
         self.state = PlaybackState::Stopped;
         self.current_track = None;
         self.driver
-            .send_command(AudioCommand::Clear)
+            .send_command(AudioCommand::Pause)
             .map_err(|e| anyhow!("Failed to stop playback: {e}"))?;
         Ok(self.state.clone())
     }
