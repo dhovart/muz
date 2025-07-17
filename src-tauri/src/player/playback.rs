@@ -148,7 +148,7 @@ impl Playback {
 
     pub fn previous(&mut self) -> Result<PlaybackState> {
         if let Some(track) = self.history.pop() {
-            self.driver.send_command(AudioCommand::Clear)?;
+            self.driver.send_command(AudioCommand::Pause)?; // FIXME replace by Stop
             self.current_track = Some(track);
             self.play()
         } else {
