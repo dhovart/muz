@@ -24,6 +24,18 @@ let make = () => {
     ->ignore
   })
 
+  let handleTrackSelect = React.useCallback0((track: Track.t) => {
+    TrackService.playFromLibrary(track.id)
+    ->Promise.then(_ => {
+      Promise.resolve()
+    })
+    ->Promise.catch(error => {
+      Js.Console.error2("Failed to prepend play from library:", error)
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
   React.useEffect0(() => {
     loadTracks()
     None
@@ -37,6 +49,8 @@ let make = () => {
       ? <div>
           <Mui.CircularProgress />
         </div>
-      : <TrackList tracks currentTrack=player.currentTrack context="library" />}
+      : <TrackList
+          tracks currentTrack=player.currentTrack onTrackSelect=handleTrackSelect context="library"
+        />}
   </div>
 }

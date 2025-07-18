@@ -55,6 +55,10 @@ impl Library {
         self.tracks.clone()
     }
 
+    pub fn get_track_by_id(&self, track_id: &str) -> Option<Track> {
+        self.tracks.iter().find(|track| track.id == track_id).cloned()
+    }
+
     pub fn update(&mut self, path: Option<PathBuf>, name: Option<String>) {
         if let Some(p) = path {
             self.path = p;

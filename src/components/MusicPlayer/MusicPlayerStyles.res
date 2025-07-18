@@ -12,10 +12,6 @@ let container = style([
   position(#relative),
 ])
 let track = style([
-  width(pct(100.)),
-  marginBottom(Spacing.sectionMargin),
-  maxWidth(rem(25.)),
-  padding2(~v=Spacing.md, ~h=Spacing.lg),
   selector("& .MuiSlider-thumb", [transition("none")]),
   selector("& .MuiSlider-track", [transition("none"), height(rem(0.375))]),
 ])

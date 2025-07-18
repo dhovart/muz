@@ -30,3 +30,12 @@ let selectTrackFromQueue = async (trackId: string): State.t => {
   | _ => State.Stopped
   }
 }
+
+let playFromLibrary = async (trackId: string): State.t => {
+  let result = await Tauri.invoke("play_from_library", {"trackId": trackId})
+  switch result {
+  | "Playing" => State.Playing
+  | "Paused" => State.Paused
+  | _ => State.Stopped
+  }
+}

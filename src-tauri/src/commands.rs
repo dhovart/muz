@@ -1,9 +1,6 @@
 use std::time::Duration;
 
-use crate::player::{
-    playback::PlaybackState,
-    track::Track,
-};
+use crate::player::{playback::PlaybackState, track::Track};
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use tauri::{ipc::Channel, State};
@@ -116,5 +113,27 @@ pub fn select_track_from_queue(
     track_id: String,
 ) -> Result<PlaybackState, PlaybackError> {
     let mut playback = state.playback.lock().unwrap();
-    playback.select_track_from_queue(&track_id).map_err(PlaybackError::from)
+    playback
+        .select_track_from_queue(&track_id)
+        .map_err(PlaybackError::from)
+}
+
+#[tauri::command]
+pub fn play_from_library(
+    state: State<'_, AppState>,
+    track_id: String,
+) -> Result<PlaybackState, PlaybackError> {
+    let mut playback = state.playback.lock().unwrap();
+    let track = state
+        .library
+        .lock()
+        .unwrap()
+        .get_track_by_id(&track_id)
+        .ok_or_else(|| PlaybackError("Track not found".to_string()))?;
+    playback.prepend(track);
+    if playback.state == PlaybackState::Playing || playback.state == PlaybackState::Paused {
+        playback.next().map_err(PlaybackError::from)
+    } else {
+        playback.play().map_err(PlaybackError::from)
+    }
 }

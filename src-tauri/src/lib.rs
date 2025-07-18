@@ -1,20 +1,18 @@
 use std::sync::{Arc, Mutex};
 
 use crate::player::{
-    library::Library,
-    playback::Playback,
-    playback_driver::DefaultPlaybackDriver,
-    track::Track,
+    library::Library, playback::Playback, playback_driver::DefaultPlaybackDriver, track::Track,
 };
-use serde::{Deserialize, Serialize};
 use tauri::{ipc::Channel, Builder, Emitter, Manager};
 
 mod commands;
 mod config;
+mod events;
 mod player;
 
 use commands::*;
 use config::AppConfig;
+use events::*;
 
 pub struct AppState {
     pub playback: Arc<Mutex<Playback>>,
@@ -22,33 +20,6 @@ pub struct AppState {
     pub config: Arc<Mutex<AppConfig>>,
     pub library: Arc<Mutex<Library>>,
 }
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct HistoryUpdateEvent {
-    has_history: bool,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct TrackChangedEvent {
-    track: Option<Track>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-struct QueueChangedEvent {
-    queue: Vec<Track>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ProgressEvent {
-    pub position: f64,
-    pub frames_played: u64,
-    pub spectrum_data: Vec<f32>,
-}
-
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -137,7 +108,8 @@ pub fn run() {
             set_library_path,
             rescan_library,
             get_library_tracks,
-            select_track_from_queue
+            select_track_from_queue,
+            play_from_library
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
