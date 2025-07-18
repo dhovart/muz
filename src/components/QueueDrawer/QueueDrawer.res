@@ -9,7 +9,7 @@ module Close = {
 
 @react.component
 let make = (~isOpen: bool, ~onClose: unit => unit, ~onTrackSelect: option<Track.t => unit>=?) => {
-  let playerState = PlayerContext.usePlayer()
+  let player = PlayerContext.usePlayer()
 
   <StyledEngineProvider injectFirst=true>
     <Mui.Drawer anchor=Right open_=isOpen onClose={(_, _) => onClose()}>
@@ -20,11 +20,11 @@ let make = (~isOpen: bool, ~onClose: unit => unit, ~onTrackSelect: option<Track.
             <Close />
           </Mui.IconButton>
         </div>
-        {playerState.queue->Array.length == 0
+        {player.queue->Array.length == 0
           ? <div className=emptyState>
               <p> {"No tracks in queue"->React.string} </p>
             </div>
-          : <TrackList tracks=playerState.queue currentTrack=playerState.currentTrack />}
+          : <TrackList tracks=player.queue currentTrack=player.currentTrack />}
       </div>
     </Mui.Drawer>
   </StyledEngineProvider>

@@ -130,14 +130,22 @@ impl Playback {
     }
 
     pub fn enqueue(&mut self, track: Track) {
-        self.enqueue_internal(track);
-        self.event_sender.send(PlaybackEvent::QueueChanged(self.get_queue())).ok();
-    }
-
-    fn enqueue_internal(&mut self, track: Track) {
-        println!("Enqueuing track: {track:?}");
         if let Some(queue) = &mut self.queue {
             queue.enqueue(track);
+        } else {
+            println!("Creating queue");
+            let mut queue = Queue::new();
+            queue.enqueue(track);
+            self.queue = Some(queue);
+        }
+        self.event_sender
+            .send(PlaybackEvent::QueueChanged(self.get_queue()))
+            .ok();
+    }
+
+    pub fn prepend(&mut self, track: Track) {
+        if let Some(queue) = &mut self.queue {
+            queue.prepend(track);
         } else {
             println!("Creating queue");
             let mut queue = Queue::new();
@@ -148,16 +156,20 @@ impl Playback {
 
     pub fn enqueue_multiple(&mut self, tracks: Vec<Track>) {
         for track in tracks {
-            self.enqueue_internal(track);
+            self.enqueue(track);
         }
-        self.event_sender.send(PlaybackEvent::QueueChanged(self.get_queue())).ok();
+        self.event_sender
+            .send(PlaybackEvent::QueueChanged(self.get_queue()))
+            .ok();
     }
 
     pub fn clear_queue(&mut self) {
         if let Some(queue) = &mut self.queue {
             queue.clear();
         }
-        self.event_sender.send(PlaybackEvent::QueueChanged(self.get_queue())).ok();
+        self.event_sender
+            .send(PlaybackEvent::QueueChanged(self.get_queue()))
+            .ok();
     }
 
     pub fn play(&mut self) -> Result<PlaybackState> {
@@ -170,8 +182,12 @@ impl Playback {
             if let Some(queue) = &mut self.queue {
                 self.current_track = queue.dequeue();
                 if track_changed {
-                    self.event_sender.send(PlaybackEvent::TrackChanged(self.current_track.clone())).ok();
-                    self.event_sender.send(PlaybackEvent::QueueChanged(self.get_queue())).ok();
+                    self.event_sender
+                        .send(PlaybackEvent::TrackChanged(self.current_track.clone()))
+                        .ok();
+                    self.event_sender
+                        .send(PlaybackEvent::QueueChanged(self.get_queue()))
+                        .ok();
                 }
             };
         }
@@ -198,6 +214,15 @@ impl Playback {
         self.state = PlaybackState::Stopped;
         self.current_track_added_to_history = false;
         self.driver.send_command(AudioCommand::Pause)?;
+
+        // Prepend current track to queue before switching to previous
+        if let Some(current_track) = self.current_track.clone() {
+            self.prepend(current_track);
+            self.event_sender
+                .send(PlaybackEvent::QueueChanged(self.get_queue()))
+                .ok();
+        }
+
         let mut history_changed = false;
         while let last = self.history.pop() {
             history_changed = true;
@@ -213,7 +238,9 @@ impl Playback {
             self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
         }
         let result = self.play();
-        self.event_sender.send(PlaybackEvent::TrackChanged(self.current_track.clone())).ok();
+        self.event_sender
+            .send(PlaybackEvent::TrackChanged(self.current_track.clone()))
+            .ok();
         result
     }
 
@@ -264,7 +291,10 @@ impl Playback {
     }
 
     pub fn get_queue(&self) -> Vec<Track> {
-        self.queue.as_ref().map(|q| q.tracks()).unwrap_or_else(Vec::new)
+        self.queue
+            .as_ref()
+            .map(|q| q.tracks())
+            .unwrap_or_else(Vec::new)
     }
 
     pub fn get_current_track(&self) -> Option<Track> {

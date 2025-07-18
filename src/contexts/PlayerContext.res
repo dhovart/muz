@@ -1,4 +1,5 @@
 open TrackService
+open State
 
 type playerState = {
   currentTrack: option<Track.t>,
@@ -6,6 +7,7 @@ type playerState = {
   hasHistory: bool,
   position: float,
   volume: float,
+  state: State.t,
 }
 
 type playerAction =
@@ -14,6 +16,7 @@ type playerAction =
   | SetHasHistory(bool)
   | SetPosition(float)
   | SetVolume(float)
+  | SetState(State.t)
 
 type playerContextType = {
   currentTrack: option<Track.t>,
@@ -21,6 +24,8 @@ type playerContextType = {
   hasHistory: bool,
   position: float,
   volume: float,
+  state: State.t,
+  setState: State.t => unit,
   cleanupListeners: unit => unit,
 }
 
@@ -30,6 +35,8 @@ let playerContext = React.createContext({
   hasHistory: false,
   position: 0.0,
   volume: 0.5,
+  state: State.Stopped,
+  setState: _ => (),
   cleanupListeners: () => (),
 })
 
@@ -115,6 +122,8 @@ module PlayerProvider = {
       hasHistory: state.hasHistory,
       position: state.position,
       volume: state.volume,
+      state: state.state,
+      setState: newState => dispatch(SetState(newState)),
       cleanupListeners: () => cleanupRef.current(),
     }
 

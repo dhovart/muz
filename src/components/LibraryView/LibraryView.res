@@ -3,7 +3,7 @@ open LibraryViewStyles
 
 @react.component
 let make = () => {
-  let playerState = PlayerContext.usePlayer()
+  let player = PlayerContext.usePlayer()
 
   let (tracks, setTracks) = React.useState(_ => [])
   let (loading, setLoading) = React.useState(_ => true)
@@ -37,6 +37,6 @@ let make = () => {
       ? <div>
           <Mui.CircularProgress />
         </div>
-      : <TrackList tracks currentTrack=playerState.currentTrack />}
+      : <TrackList tracks currentTrack=player.currentTrack />}
   </div>
 }

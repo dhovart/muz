@@ -23,8 +23,6 @@ module Command = {
     | _ => Js.Json.object_(Js.Dict.fromArray([("command", commandName)]))
     }
 
-    Js.log2("Command payload created", contents)
-
     Js.Json.object_(Js.Dict.fromArray([("payload", contents)]))
   }
 }

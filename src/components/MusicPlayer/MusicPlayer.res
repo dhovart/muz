@@ -28,17 +28,15 @@ type progressSubscriptionPayload = {onProgress: Tauri.channelType<progressEvent>
 let make = () => {
   let albumArtUrl = "http://picsum.photos/1200/1200"
 
-  let (state, setState) = React.useState(() => State.Paused)
-  let playerState = PlayerContext.usePlayer()
+  let player = PlayerContext.usePlayer()
 
   let invokePlayerCommand = async command => {
     try {
-      let _ret = await TrackService.controlPlayback(command)
-      // Handle state updates based on command
-      switch command {
-      | Command.Play => setState(_ => State.Playing)
-      | Command.Pause => setState(_ => State.Paused)
-      | _ => ()
+      let result = await TrackService.controlPlayback(command)
+      switch result {
+      | Playing => player.setState(State.Playing)
+      | Paused => player.setState(State.Paused)
+      | Stopped => player.setState(State.Stopped)
       }
       Js.Console.log2("Player command invoked successfully", command)
     } catch {
@@ -47,24 +45,23 @@ let make = () => {
   }
 
   React.useEffect(() => {
-    invokePlayerCommand(SetVolume(playerState.volume))->ignore
+    invokePlayerCommand(SetVolume(player.volume))->ignore
     None
-  }, [playerState.volume])
-
+  }, [player.volume])
 
   let handlePlayPause = React.useCallback(() => {
-    switch state {
+    switch player.state {
     | State.Playing => {
-        setState(_ => State.Paused)
+        player.setState(State.Paused)
         invokePlayerCommand(Command.Pause)->ignore
       }
     | State.Stopped
     | State.Paused => {
-        setState(_ => State.Playing)
+        player.setState(State.Playing)
         invokePlayerCommand(Command.Play)->ignore
       }
     }
-  }, [state])
+  }, [player.state])
 
   let handleSeek = React.useCallback(value => {
     invokePlayerCommand(Command.Seek(value))->ignore
@@ -89,7 +86,7 @@ let make = () => {
       <div>
         <Typography variant={H6}>
           {React.string(
-            switch playerState.currentTrack {
+            switch player.currentTrack {
             | Some(track) => track->Track.displayTitle
             | None => "No track selected"
             },
@@ -99,19 +96,19 @@ let make = () => {
       </div>
       <Slider
         className={MusicPlayerStyles.track}
-        value=playerState.position
+        value=player.position
         max=1.0
         onChange={(_, value, _) => handleSeek(value)->ignore}
       />
       <div>
-        <IconButton onClick={_ => handlePrev()->ignore} disabled={!playerState.hasHistory}>
+        <IconButton onClick={_ => handlePrev()->ignore} disabled={!player.hasHistory}>
           <SkipPrevious />
         </IconButton>
         <Fab
           className={MusicPlayerStyles.playButton}
           color={Primary}
           onClick={_ => handlePlayPause()->ignore}>
-          {state == State.Playing ? <Pause /> : <PlayArrow />}
+          {player.state == State.Playing ? <Pause /> : <PlayArrow />}
         </Fab>
         <IconButton onClick={_ => handleNext()->ignore}>
           <SkipNext />

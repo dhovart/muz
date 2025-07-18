@@ -1,5 +1,8 @@
 %%raw("import '@fontsource/inter'")
 
+open PlayerContext
+open State
+
 @react.component
 let make = () => {
   let (currentPage, setCurrentPage) = React.useState(() => Route.MusicPlayer)
@@ -17,13 +20,14 @@ let make = () => {
     setIsQueueDrawerOpen(_ => false)
   }
 
-  let playerReducer = (state: PlayerContext.playerState, action: PlayerContext.playerAction) => {
+  let playerReducer = (state: playerState, action: playerAction) => {
     switch action {
     | SetCurrentTrack(track) => {...state, currentTrack: track}
     | SetQueue(queue) => {...state, queue}
     | SetHasHistory(hasHistory) => {...state, hasHistory}
     | SetPosition(position) => {...state, position}
     | SetVolume(volume) => {...state, volume}
+    | SetState(playerState) => {...state, state: playerState}
     }
   }
 
@@ -35,6 +39,7 @@ let make = () => {
       hasHistory: false,
       position: 0.0,
       volume: 0.5,
+      state: State.Stopped,
     },
   )
 
@@ -45,7 +50,7 @@ let make = () => {
 
   <Mui.ThemeProvider theme={Theme(Theme.theme)}>
     <Mui.CssBaseline />
-    <PlayerContext.PlayerProvider state={state} dispatch={dispatch}>
+    <PlayerProvider state={state} dispatch={dispatch}>
       <div>
         <Menu
           currentPage={currentPage}
@@ -61,6 +66,6 @@ let make = () => {
           isOpen={isQueueDrawerOpen} onClose={handleQueueClose} onTrackSelect={handleTrackSelect}
         />
       </div>
-    </PlayerContext.PlayerProvider>
+    </PlayerProvider>
   </Mui.ThemeProvider>
 }

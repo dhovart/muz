@@ -1,11 +1,17 @@
 open Command
+open State
 
 let getLibraryTracks = (): Promise.t<array<Track.t>> => {
   Tauri.invoke("get_library_tracks", ())
 }
 
-let controlPlayback = (command: Command.t): Promise.t<unit> => {
-  Tauri.invoke("control_playback", Command.toJsonPayload(command))
+let controlPlayback = async (command: Command.t): State.t => {
+  let result = await Tauri.invoke("control_playback", Command.toJsonPayload(command))
+  switch result {
+  | "Playing" => State.Playing
+  | "Paused" => State.Paused
+  | _ => State.Stopped
+  }
 }
 
 type progressEvent = {positionPercent: int}

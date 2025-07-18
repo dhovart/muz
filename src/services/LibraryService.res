@@ -3,7 +3,6 @@ let getLibraryPath = (): Promise.t<string> => {
 }
 
 let setLibraryPath = (path: string) => {
-  // Clean up existing event listeners before changing library
   Tauri.invoke("set_library_path", {"path": path})
 }
 
