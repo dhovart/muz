@@ -136,7 +136,8 @@ pub fn run() {
             get_library_path,
             set_library_path,
             rescan_library,
-            get_library_tracks
+            get_library_tracks,
+            select_track_from_queue
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

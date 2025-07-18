@@ -46,8 +46,16 @@ let make = () => {
   )
 
   let handleTrackSelect = (track: Track.t) => {
-    // TODO: Add track selection logic
-    Js.log2("Track selected:", track)
+    TrackService.selectTrackFromQueue(track.id)
+    ->Promise.then(newState => {
+      dispatch(SetState(newState))
+      Promise.resolve()
+    })
+    ->Promise.catch(error => {
+      Js.Console.error2("Error selecting track from queue:", error)
+      Promise.resolve()
+    })
+    ->ignore
   }
 
   <Mui.ThemeProvider theme={Theme(Theme.theme)}>

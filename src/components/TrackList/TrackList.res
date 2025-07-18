@@ -5,6 +5,7 @@ let make = (
   ~tracks: array<Track.t>,
   ~currentTrack: option<Track.t>,
   ~onTrackSelect: option<Track.t => unit>=?,
+  ~context: string="default",
 ) => {
   let handleTrackClick = (track: Track.t) => {
     switch onTrackSelect {
@@ -20,7 +21,7 @@ let make = (
     }
 
     <div
-      key={track.id}
+      key={context ++ "_" ++ track.id}
       className={isCurrentTrack ? TrackListStyles.currentTrackRow : TrackListStyles.trackRow}
       onClick={_ => handleTrackClick(track)}>
       <div className=TrackListStyles.trackTitle> {track->Track.displayTitle->React.string} </div>

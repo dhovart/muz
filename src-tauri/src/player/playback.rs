@@ -285,6 +285,35 @@ impl Playback {
     pub fn get_current_track(&self) -> Option<Track> {
         self.current_track.clone()
     }
+
+    pub fn select_track_from_queue(&mut self, track_id: &str) -> Result<PlaybackState> {
+        if let Some(queue) = &mut self.queue {
+            let queue_tracks = queue.tracks();
+            if let Some(track_index) = queue_tracks.iter().position(|t| t.id == track_id) {
+                // Move the selected track to the front of the queue
+                queue.move_item(track_index, 0);
+                
+                // If there's a current track, stop it and add it back to history
+                if let Some(current_track) = self.current_track.clone() {
+                    self.history.push(current_track);
+                    self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
+                }
+                
+                // Stop current playback
+                self.stop()?;
+                
+                // Play the selected track
+                self.play()?;
+                
+                self.event_sender
+                    .send(PlaybackEvent::QueueChanged(self.get_queue()))
+                    .ok();
+                
+                return Ok(self.state.clone());
+            }
+        }
+        Err(anyhow!("Track not found in queue"))
+    }
 }
 
 impl Drop for Playback {

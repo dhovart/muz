@@ -22,16 +22,16 @@ let themeOptions: ThemeOptions.t = {
   palette: {
     mode: "light",
     primary: {
-      main: "#c9516b",
+      main: Color.hexString(Color.primary),
     },
     secondary: {
-      main: "#4b4d7f",
+      main: Color.hexString(Color.secondary),
     },
     text: {
-      primary: "#151715",
+      primary: Color.hexString(Color.text),
     },
     background: {
-      default: "#f0ebe6",
+      default: Color.hexString(Color.backgroundColor),
     },
   },
   shadows: ["none"],

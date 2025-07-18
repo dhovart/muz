@@ -28,6 +28,8 @@
     "@tauri-apps/plugin-opener": "^2",
     "bs-css": "^18.1.0",
     "bs-css-emotion": "^7.1.0",
+    "framer-motion": "^12.23.6",
+    "motion": "^12.23.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "rescript": "^11.1.4"

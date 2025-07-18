@@ -21,3 +21,12 @@ let subscribeToProgress = (onProgress: progressEvent => unit): Promise.t<unit> =
   channel.onmessage = onProgress
   Tauri.invoke("subscribe_to_progress", {"onProgress": channel})
 }
+
+let selectTrackFromQueue = async (trackId: string): State.t => {
+  let result = await Tauri.invoke("select_track_from_queue", {"trackId": trackId})
+  switch result {
+  | "Playing" => State.Playing
+  | "Paused" => State.Paused
+  | _ => State.Stopped
+  }
+}

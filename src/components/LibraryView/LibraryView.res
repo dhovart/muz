@@ -37,6 +37,6 @@ let make = () => {
       ? <div>
           <Mui.CircularProgress />
         </div>
-      : <TrackList tracks currentTrack=player.currentTrack />}
+      : <TrackList tracks currentTrack=player.currentTrack context="library" />}
   </div>
 }

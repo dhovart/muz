@@ -1,10 +1,15 @@
 open CssJs
 
-let container = style([padding(rem(1.)), height(vh(100.0)), overflowY(#auto)])
+let container = style([
+  padding(Spacing.containerPadding),
+  height(vh(100.0)),
+  overflowY(#auto),
+  backgroundColor(Color.backgroundColor),
+])
 
 let header = style([
   display(#flex),
   justifyContent(#spaceBetween),
   alignItems(#center),
-  marginBottom(rem(1.)),
+  marginBottom(Spacing.sectionMargin),
 ])

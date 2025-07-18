@@ -109,3 +109,12 @@ pub fn get_library_tracks(state: State<'_, AppState>) -> Result<Vec<Track>, Stri
     let library = state.library.lock().map_err(|e| e.to_string())?;
     Ok(library.get_tracks())
 }
+
+#[tauri::command]
+pub fn select_track_from_queue(
+    state: State<'_, AppState>,
+    track_id: String,
+) -> Result<PlaybackState, PlaybackError> {
+    let mut playback = state.playback.lock().unwrap();
+    playback.select_track_from_queue(&track_id).map_err(PlaybackError::from)
+}
