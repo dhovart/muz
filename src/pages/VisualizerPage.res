@@ -12,7 +12,8 @@ let make = (~onExit: unit => unit=() => ()) => {
     switch shaderName {
     | "colorful_thingy" => setShaderSource(_ => Shaders.colorfulThingyFragmentShader)
     | "default"
-    | _ => setShaderSource(_ => Shaders.defaultFragmentShader)
+    | _ =>
+      setShaderSource(_ => Shaders.defaultFragmentShader)
     }
   }
 
@@ -128,9 +129,6 @@ let make = (~onExit: unit => unit=() => ()) => {
             )
             ->React.array}
           </select>
-          <div style={{fontSize: "12px", opacity: "0.7"}}>
-            {React.string("Press ESC to exit")}
-          </div>
         </div>
       : React.null}
   </div>
