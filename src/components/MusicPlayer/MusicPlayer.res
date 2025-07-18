@@ -23,8 +23,6 @@ open Command
 
 @react.component
 let make = () => {
-  let albumArtUrl = "http://picsum.photos/1200/1200"
-
   let player = PlayerContext.usePlayer()
   let hasQueue = React.useMemo(() => player.queue->Array.length > 0, [player.queue])
 
@@ -80,7 +78,6 @@ let make = () => {
       alignItems=Center
       container=true
       direction=Column>
-      <img className={MusicPlayerStyles.art} src=albumArtUrl alt="Album Art" />
       <SpectrumVisualizer spectrumData={player.spectrumData} />
       <div>
         <Typography variant={H6}>

@@ -34,7 +34,7 @@ pub struct DefaultPlaybackDriver {
 }
 
 type SoundController =
-    Controller<ProgressUpdate<CompletionNotifier<AdjustableVolume<Pausable<Box<dyn Sound>>>>>>;
+    Controller<ProgressUpdate<CompletionNotifier<Pausable<AdjustableVolume<Box<dyn Sound>>>>>>;
 
 impl DefaultPlaybackDriver {
     #[allow(clippy::new_ret_no_self)]
@@ -54,7 +54,7 @@ impl DefaultPlaybackDriver {
                             Ok(sound) => {
                                 let progress_sender = playback_sender.clone();
 
-                                let sound = sound.pausable().with_adjustable_volume_of(volume);
+                                let sound = sound.with_adjustable_volume_of(volume).pausable();
                                 let (sound, notifier) = sound.with_completion_notifier();
 
                                 let sound = ProgressUpdate::new(
@@ -62,7 +62,11 @@ impl DefaultPlaybackDriver {
                                     track.total_frames,
                                     Box::new(move |progress, frames_played, spectrum_data| {
                                         progress_sender
-                                            .send(PlaybackEvent::Progress(progress, frames_played, spectrum_data))
+                                            .send(PlaybackEvent::Progress(
+                                                progress,
+                                                frames_played,
+                                                spectrum_data,
+                                            ))
                                             .unwrap();
                                     }),
                                 );
@@ -71,8 +75,9 @@ impl DefaultPlaybackDriver {
                                 controller = Some(ctrl);
 
                                 thread::spawn(move || {
-                                    let _ = notifier.recv();
-                                    let _ = playback_sender.send(PlaybackEvent::TrackCompleted);
+                                    if let Ok(_) = notifier.recv() {
+                                        let _ = playback_sender.send(PlaybackEvent::TrackCompleted);
+                                    }
                                 });
 
                                 manager.play(Box::new(sound));

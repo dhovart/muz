@@ -65,7 +65,6 @@ module PlayerProvider = {
           let unlistenTrackChanged = await Tauri.listenToEvent("track-changed", (
             payload: {"track": Nullable.t<Track.t>},
           ) => {
-            Js.Console.log2("Track changed event received", payload)
             let maybeTrack = payload["track"]->Nullable.toOption
             switch maybeTrack {
             | Some(track) => dispatch(SetCurrentTrack(Some(track)))

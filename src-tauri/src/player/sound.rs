@@ -1,18 +1,23 @@
 use super::spectrum::SpectrumAnalyzer;
 use anyhow::Result;
-use awedio::{sounds::wrappers::Wrapper, NextSample, Sound};
+use awedio::{
+    sounds::wrappers::{SetPaused, Stoppable, Wrapper},
+    NextSample, Sound,
+};
 use std::sync::{Arc, Mutex};
+
+const REFRESH_RATE: u128 = 100; // milliseconds
 
 pub struct ProgressUpdate<S: Sound> {
     inner: S,
     total_frames: u64,
     samples_played: u64,
-    percent_completed: f64,
     on_update: Box<dyn Fn(f64, u64, Vec<f32>) + Send>,
     spectrum_analyzer: Arc<Mutex<SpectrumAnalyzer>>,
     sample_buffer: Vec<f32>,
     batch_size: usize,
     cached_spectrum: Vec<f32>,
+    last_update_time: std::time::Instant,
 }
 
 impl<S: Sound> ProgressUpdate<S> {
@@ -22,18 +27,18 @@ impl<S: Sound> ProgressUpdate<S> {
         on_update: Box<dyn Fn(f64, u64, Vec<f32>) + Send>,
     ) -> Self {
         let sample_rate = inner.sample_rate() as f32;
-        let spectrum_analyzer = Arc::new(Mutex::new(SpectrumAnalyzer::new(2048, sample_rate)));
+        let spectrum_analyzer = Arc::new(Mutex::new(SpectrumAnalyzer::new(4096, sample_rate)));
 
         ProgressUpdate {
             inner,
             total_frames,
             samples_played: 0,
-            percent_completed: 0.0,
             on_update,
             spectrum_analyzer,
             sample_buffer: Vec::new(),
             batch_size: 512,
             cached_spectrum: Vec::new(),
+            last_update_time: std::time::Instant::now(),
         }
     }
 }
@@ -63,7 +68,6 @@ impl<S: Sound> Sound for ProgressUpdate<S> {
             Ok(sample) => {
                 self.samples_played += 1;
 
-                // Convert sample to f32 and add to buffer
                 let sample_f32 = match sample {
                     NextSample::Sample(s) => s as f32 / i16::MAX as f32,
                     NextSample::Paused => 0.0,
@@ -82,16 +86,20 @@ impl<S: Sound> Sound for ProgressUpdate<S> {
                 };
                 let percent_completed = (percent_completed * 10.0).round() / 10.0;
 
-                if self.percent_completed != percent_completed {
-                    if self.sample_buffer.len() >= self.batch_size {
-                        if let Ok(mut analyzer) = self.spectrum_analyzer.lock() {
-                            analyzer.add_samples(&self.sample_buffer);
-                            self.cached_spectrum = analyzer.get_spectrum();
-                        }
-                        self.sample_buffer.clear();
+                if self.sample_buffer.len() >= self.batch_size {
+                    if let Ok(mut analyzer) = self.spectrum_analyzer.lock() {
+                        analyzer.add_samples(&self.sample_buffer);
+                        self.cached_spectrum = analyzer.get_spectrum();
                     }
+                    self.sample_buffer.clear();
+                }
 
-                    self.percent_completed = percent_completed;
+                let now = std::time::Instant::now();
+                let should_update =
+                    now.duration_since(self.last_update_time).as_millis() >= REFRESH_RATE;
+
+                if should_update {
+                    self.last_update_time = now;
                     (self.on_update)(
                         percent_completed,
                         frames_played,

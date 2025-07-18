@@ -5,32 +5,52 @@ pub struct SpectrumAnalyzer {
     buffer: Vec<f32>,
     fft_size: usize,
     sample_rate: f32,
+    write_index: usize,
+    filled: bool,
 }
 
 impl SpectrumAnalyzer {
     pub fn new(fft_size: usize, sample_rate: f32) -> Self {
         Self {
-            buffer: Vec::with_capacity(fft_size),
+            buffer: vec![0.0; fft_size],
             fft_size,
             sample_rate,
+            write_index: 0,
+            filled: false,
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.buffer.fill(0.0);
+        self.write_index = 0;
+        self.filled = false;
     }
 
     pub fn add_samples(&mut self, samples: &[f32]) {
         for &sample in samples {
-            self.buffer.push(sample);
-            if self.buffer.len() >= self.fft_size {
-                self.buffer.drain(0..self.buffer.len() - self.fft_size);
+            self.buffer[self.write_index] = sample;
+            self.write_index = (self.write_index + 1) % self.fft_size;
+            
+            if self.write_index == 0 {
+                self.filled = true;
             }
         }
     }
 
     pub fn get_spectrum(&self) -> Vec<f32> {
-        if self.buffer.len() < self.fft_size {
+        if !self.filled {
             return vec![0.0; 64]; // Return empty spectrum with 64 bins
         }
 
-        let windowed_samples = hann_window(&self.buffer[self.buffer.len() - self.fft_size..]);
+        // Create a properly ordered buffer from the circular buffer
+        // We want the oldest samples first, so start from write_index (oldest)
+        let mut ordered_buffer = Vec::with_capacity(self.fft_size);
+        for i in 0..self.fft_size {
+            let idx = (self.write_index + i) % self.fft_size;
+            ordered_buffer.push(self.buffer[idx]);
+        }
+
+        let windowed_samples = hann_window(&ordered_buffer);
         
         let spectrum = samples_fft_to_spectrum(
             &windowed_samples,
@@ -64,7 +84,9 @@ impl SpectrumAnalyzer {
                     .iter()
                     .map(|(_, magnitude)| magnitude.val())
                     .sum();
-                *bin = sum / (end_idx - start_idx) as f32;
+                let avg = sum / (end_idx - start_idx) as f32;
+                // Normalize to a reasonable range (0.0 to 1.0)
+                *bin = (avg * 0.01).min(1.0); // Scale down the values
             }
         }
 

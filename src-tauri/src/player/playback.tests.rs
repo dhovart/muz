@@ -17,13 +17,6 @@ impl TestPlaybackDriver {
 
 impl PlaybackDriver for TestPlaybackDriver {
     fn send_command(&mut self, command: AudioCommand) -> Result<()> {
-        if let AudioCommand::Play(_, event_sender) = command {
-            // Simulate progress events to trigger history updates
-            thread::spawn(move || {
-                thread::sleep(Duration::from_millis(50));
-                event_sender.send(PlaybackEvent::Progress(5.0, 1000)).ok();
-            });
-        }
         Ok(())
     }
 
@@ -36,7 +29,7 @@ fn create_playback() -> Arc<Mutex<Playback>> {
     let playback_driver = TestPlaybackDriver::new();
     Playback::create(
         Box::new(playback_driver),
-        |_, _| {},
+        |_, _, _| {},
         |_, _| {},
         |_| {},
         |_| {},
@@ -132,9 +125,8 @@ fn test_play_appends_to_history() {
         let mut playback = playback_arc.lock().unwrap();
         playback.enqueue(track.clone());
         let _ = playback.play();
+        let _ = playback.next();
     }
-
-    thread::sleep(Duration::from_millis(100));
 
     let playback = playback_arc.lock().unwrap();
     assert_eq!(playback.history.len(), 1);
@@ -148,23 +140,13 @@ fn test_play_multiple_tracks_appends_to_history() {
     let track1 = Track::new("/music/song1.mp3");
     let track2 = Track::new("/music/song2.mp3");
 
-    {
-        let mut playback = playback_arc.lock().unwrap();
-        playback.enqueue(track1.clone());
-        playback.enqueue(track2.clone());
-        let _ = playback.play();
-    }
+    let mut playback = playback_arc.lock().unwrap();
+    playback.enqueue(track1.clone());
+    playback.enqueue(track2.clone());
+    let _ = playback.play();
+    let _ = playback.next();
+    let _ = playback.next();
 
-    thread::sleep(Duration::from_millis(100));
-
-    {
-        let mut playback = playback_arc.lock().unwrap();
-        let _ = playback.next();
-    }
-
-    thread::sleep(Duration::from_millis(100));
-
-    let playback = playback_arc.lock().unwrap();
     assert_eq!(playback.history.len(), 2);
     assert_eq!(playback.history[0], track1.clone());
     assert_eq!(playback.history[1], track2.clone());
@@ -177,24 +159,12 @@ fn test_previous_prepends_current_track_to_queue() {
     let track1 = Track::new("/music/song1.mp3");
     let track2 = Track::new("/music/song2.mp3");
 
-    {
+    let initial_queue_length = {
         let mut playback = playback_arc.lock().unwrap();
         playback.enqueue(track1.clone());
         playback.enqueue(track2.clone());
         let _ = playback.play();
-    }
-
-    thread::sleep(Duration::from_millis(100));
-
-    {
-        let mut playback = playback_arc.lock().unwrap();
         let _ = playback.next();
-    }
-
-    thread::sleep(Duration::from_millis(100));
-
-    let initial_queue_length = {
-        let playback = playback_arc.lock().unwrap();
         playback.get_queue().len()
     };
 
@@ -226,20 +196,8 @@ fn test_previous_with_empty_queue_prepends_current_track() {
         playback.enqueue(track1.clone());
         playback.enqueue(track2.clone());
         let _ = playback.play();
-    }
-
-    thread::sleep(Duration::from_millis(100));
-
-    {
-        let mut playback = playback_arc.lock().unwrap();
         let _ = playback.next();
         playback.clear_queue();
-    }
-
-    thread::sleep(Duration::from_millis(100));
-
-    {
-        let mut playback = playback_arc.lock().unwrap();
         let _ = playback.previous();
     }
 
@@ -258,25 +216,15 @@ fn test_previous_with_no_current_track_does_not_prepend_to_queue() {
 
     let track1 = Track::new("/music/song1.mp3");
 
-    {
-        let mut playback = playback_arc.lock().unwrap();
-        playback.enqueue(track1.clone());
-        let _ = playback.play();
-    }
+    let mut playback = playback_arc.lock().unwrap();
+    playback.enqueue(track1.clone());
+    let _ = playback.play();
 
-    thread::sleep(Duration::from_millis(100));
+    playback.stop();
+    let _ = playback.previous();
 
-    {
-        let mut playback = playback_arc.lock().unwrap();
-        // Stop playback to clear current track
-        playback.stop();
-        let _ = playback.previous();
-    }
-
-    let playback = playback_arc.lock().unwrap();
     let queue_tracks = playback.get_queue();
 
-    // Queue should be empty since there was no current track to prepend
     assert_eq!(queue_tracks.len(), 0);
 }
 
@@ -288,42 +236,20 @@ fn test_multiple_previous_calls_prepend_correctly() {
     let track2 = Track::new("/music/song2.mp3");
     let track3 = Track::new("/music/song3.mp3");
 
-    {
+    let initial_queue_length = {
         let mut playback = playback_arc.lock().unwrap();
         playback.enqueue(track1.clone());
         playback.enqueue(track2.clone());
         playback.enqueue(track3.clone());
         let _ = playback.play();
-    }
-
-    thread::sleep(Duration::from_millis(100));
-
-    {
-        let mut playback = playback_arc.lock().unwrap();
         let _ = playback.next();
-    }
-
-    thread::sleep(Duration::from_millis(100));
-
-    {
-        let mut playback = playback_arc.lock().unwrap();
         let _ = playback.next();
-    }
-
-    thread::sleep(Duration::from_millis(100));
-
-    let initial_queue_length = {
-        let playback = playback_arc.lock().unwrap();
         playback.get_queue().len()
     };
 
     {
         let mut playback = playback_arc.lock().unwrap();
         let _ = playback.previous();
-    }
-
-    {
-        let mut playback = playback_arc.lock().unwrap();
         let _ = playback.previous();
     }
 
