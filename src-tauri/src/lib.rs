@@ -46,7 +46,7 @@ struct QueueChangedEvent {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct ProgressEvent {
-    position_percent: f64,
+    position: f64,
     frames_played: u64,
     spectrum_data: Vec<f32>,
 }
@@ -164,7 +164,7 @@ pub fn run() {
 
             let on_progress = move |progress, frames_played, spectrum_data| {
                 let event = ProgressEvent {
-                    position_percent: progress,
+                    position: progress,
                     frames_played,
                     spectrum_data,
                 };

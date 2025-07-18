@@ -90,7 +90,7 @@ module PlayerProvider = {
 
           // Subscribe to progress updates
           let _ = await TrackService.subscribeToProgress(message => {
-            let position = message.positionPercent->Js.Int.toFloat /. 100.0
+            let position = message.position
             dispatch(SetPosition(position))
             dispatch(SetSpectrumData(message.spectrumData))
           })

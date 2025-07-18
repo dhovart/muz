@@ -12,7 +12,7 @@ use std::{
     time::Duration,
 };
 
-use crate::player::{playback::PlaybackEvent, sound::ProgressUpdate, track::Track};
+use crate::player::{playback::PlaybackEvent, sound::WithProgressAndSpectrum, track::Track};
 
 pub trait PlaybackDriver: Send {
     fn send_command(&mut self, command: AudioCommand) -> Result<()>;
@@ -34,7 +34,7 @@ pub struct DefaultPlaybackDriver {
 }
 
 type SoundController =
-    Controller<ProgressUpdate<CompletionNotifier<Pausable<AdjustableVolume<Box<dyn Sound>>>>>>;
+    Controller<WithProgressAndSpectrum<CompletionNotifier<Pausable<AdjustableVolume<Box<dyn Sound>>>>>>;
 
 impl DefaultPlaybackDriver {
     #[allow(clippy::new_ret_no_self)]
@@ -57,7 +57,7 @@ impl DefaultPlaybackDriver {
                                 let sound = sound.with_adjustable_volume_of(volume).pausable();
                                 let (sound, notifier) = sound.with_completion_notifier();
 
-                                let sound = ProgressUpdate::new(
+                                let sound = WithProgressAndSpectrum::new(
                                     sound,
                                     track.total_frames,
                                     Box::new(move |progress, frames_played, spectrum_data| {

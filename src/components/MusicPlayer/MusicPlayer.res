@@ -17,8 +17,8 @@ module Pause = {
   external make: unit => React.element = "default"
 }
 
-open State
 open Mui
+open State
 open Command
 
 @react.component
@@ -78,7 +78,6 @@ let make = () => {
       alignItems=Center
       container=true
       direction=Column>
-      <SpectrumVisualizer spectrumData={player.spectrumData} />
       <div>
         <Typography variant={H6}>
           {React.string(

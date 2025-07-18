@@ -1,14 +1,11 @@
 use super::spectrum::SpectrumAnalyzer;
 use anyhow::Result;
-use awedio::{
-    sounds::wrappers::{SetPaused, Stoppable, Wrapper},
-    NextSample, Sound,
-};
+use awedio::{sounds::wrappers::Wrapper, NextSample, Sound};
 use std::sync::{Arc, Mutex};
 
-const REFRESH_RATE: u128 = 100; // milliseconds
+const REFRESH_RATE: u128 = 100;
 
-pub struct ProgressUpdate<S: Sound> {
+pub struct WithProgressAndSpectrum<S: Sound> {
     inner: S,
     total_frames: u64,
     samples_played: u64,
@@ -20,7 +17,7 @@ pub struct ProgressUpdate<S: Sound> {
     last_update_time: std::time::Instant,
 }
 
-impl<S: Sound> ProgressUpdate<S> {
+impl<S: Sound> WithProgressAndSpectrum<S> {
     pub fn new(
         inner: S,
         total_frames: u64,
@@ -29,7 +26,7 @@ impl<S: Sound> ProgressUpdate<S> {
         let sample_rate = inner.sample_rate() as f32;
         let spectrum_analyzer = Arc::new(Mutex::new(SpectrumAnalyzer::new(4096, sample_rate)));
 
-        ProgressUpdate {
+        WithProgressAndSpectrum {
             inner,
             total_frames,
             samples_played: 0,
@@ -43,7 +40,7 @@ impl<S: Sound> ProgressUpdate<S> {
     }
 }
 
-impl<S> Wrapper for ProgressUpdate<S>
+impl<S> Wrapper for WithProgressAndSpectrum<S>
 where
     S: Sound,
 {
@@ -62,7 +59,7 @@ where
     }
 }
 
-impl<S: Sound> Sound for ProgressUpdate<S> {
+impl<S: Sound> Sound for WithProgressAndSpectrum<S> {
     fn next_sample(&mut self) -> Result<NextSample, awedio::Error> {
         match self.inner.next_sample() {
             Ok(sample) => {
@@ -80,11 +77,11 @@ impl<S: Sound> Sound for ProgressUpdate<S> {
                 let total_samples = self.total_frames * self.inner.channel_count() as u64;
                 let frames_played = self.samples_played / self.inner.channel_count() as u64;
                 let percent_completed = if total_samples > 0 {
-                    (self.samples_played as f64 / total_samples as f64) * 100.0
+                    (self.samples_played as f64 / total_samples as f64)
                 } else {
                     0.0
                 };
-                let percent_completed = (percent_completed * 10.0).round() / 10.0;
+                let percent_completed = (percent_completed * 1000.0).round() / 1000.0;
 
                 if self.sample_buffer.len() >= self.batch_size {
                     if let Ok(mut analyzer) = self.spectrum_analyzer.lock() {

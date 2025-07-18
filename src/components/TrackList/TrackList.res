@@ -13,7 +13,7 @@ let make = (
     }
   }
 
-  let renderTrack = (track: Track.t, index: int) => {
+  let renderTrack = (track: Track.t, _index: int) => {
     let isCurrentTrack = switch currentTrack {
     | Some(current) => current.id == track.id
     | None => false

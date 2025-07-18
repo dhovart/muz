@@ -1,5 +1,4 @@
 open CssJs
-open CssJs.Types.Time
 
 let container = style([padding(rem(1.)), height(vh(100.0)), overflowY(#auto)])
 

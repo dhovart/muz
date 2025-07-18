@@ -18,6 +18,11 @@ module QueueMusic = {
   external make: (~className: string=?) => React.element = "default"
 }
 
+module Visualizer = {
+  @react.component @module("@mui/icons-material/Fullscreen")
+  external make: (~className: string=?) => React.element = "default"
+}
+
 open Mui
 
 @react.component
@@ -37,6 +42,11 @@ let make = (~currentPage: Route.t, ~onPageChange: Route.t => unit, ~onQueueToggl
       <IconButton 
         onClick={_ => onQueueToggle()}>
         <QueueMusic />
+      </IconButton>
+      <IconButton 
+        onClick={_ => onPageChange(Route.Visualizer)} 
+        color={currentPage == Route.Visualizer ? Primary : Default}>
+        <Visualizer />
       </IconButton>
       <IconButton 
         onClick={_ => onPageChange(Route.Settings)} 

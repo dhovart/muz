@@ -54,15 +54,18 @@ let make = () => {
     <Mui.CssBaseline />
     <PlayerProvider state={state} dispatch={dispatch}>
       <div>
-        <Menu
-          currentPage={currentPage}
-          onPageChange={handlePageChange}
-          onQueueToggle={handleQueueToggle}
-        />
+        {currentPage !== Route.Visualizer
+          ? <Menu
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+              onQueueToggle={handleQueueToggle}
+            />
+          : React.null}
         {switch currentPage {
         | Route.MusicPlayer => <MusicPlayerPage />
         | Route.Library => <LibraryPage />
         | Route.Settings => <SettingsPage />
+        | Route.Visualizer => <VisualizerPage onExit={() => handlePageChange(Route.MusicPlayer)} />
         }}
         <QueueDrawer
           isOpen={isQueueDrawerOpen} onClose={handleQueueClose} onTrackSelect={handleTrackSelect}
