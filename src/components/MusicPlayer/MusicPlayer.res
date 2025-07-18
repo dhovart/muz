@@ -30,9 +30,9 @@ let make = () => {
     try {
       let result = await TrackService.controlPlayback(command)
       switch result {
-      | Playing => player.setState(State.Playing)
-      | Paused => player.setState(State.Paused)
-      | Stopped => player.setState(State.Stopped)
+      | Playing => player.dispatch(SetState(State.Playing))
+      | Paused => player.dispatch(SetState(State.Paused))
+      | Stopped => player.dispatch(SetState(State.Stopped))
       }
       Js.Console.log2("Player command invoked successfully", command)
     } catch {
@@ -48,12 +48,12 @@ let make = () => {
   let handlePlayPause = React.useCallback(() => {
     switch player.state {
     | State.Playing => {
-        player.setState(State.Paused)
+        player.dispatch(SetState(State.Paused))
         invokePlayerCommand(Command.Pause)->ignore
       }
     | State.Stopped
     | State.Paused => {
-        player.setState(State.Playing)
+        player.dispatch(SetState(State.Playing))
         invokePlayerCommand(Command.Play)->ignore
       }
     }

@@ -25,15 +25,7 @@ let make = () => {
   })
 
   let handleTrackSelect = React.useCallback0((track: Track.t) => {
-    TrackService.playFromLibrary(track.id)
-    ->Promise.then(_ => {
-      Promise.resolve()
-    })
-    ->Promise.catch(error => {
-      Js.Console.error2("Failed to prepend play from library:", error)
-      Promise.resolve()
-    })
-    ->ignore
+    TrackService.playFromLibrary(track.id)->ignore
   })
 
   React.useEffect0(() => {

@@ -20,43 +20,7 @@ let make = () => {
     setIsQueueDrawerOpen(_ => false)
   }
 
-  let playerReducer = (state: playerState, action: playerAction) => {
-    switch action {
-    | SetCurrentTrack(track) => {...state, currentTrack: track}
-    | SetQueue(queue) => {...state, queue}
-    | SetHasHistory(hasHistory) => {...state, hasHistory}
-    | SetPosition(position) => {...state, position}
-    | SetVolume(volume) => {...state, volume}
-    | SetState(playerState) => {...state, state: playerState}
-    | SetSpectrumData(spectrumData) => {...state, spectrumData}
-    }
-  }
-
-  let (state, dispatch) = React.useReducer(
-    playerReducer,
-    {
-      currentTrack: None,
-      queue: [],
-      hasHistory: false,
-      position: 0.0,
-      volume: 0.5,
-      state: State.Stopped,
-      spectrumData: [],
-    },
-  )
-
-  let handleTrackSelect = (track: Track.t) => {
-    TrackService.selectTrackFromQueue(track.id)
-    ->Promise.then(newState => {
-      dispatch(SetState(newState))
-      Promise.resolve()
-    })
-    ->Promise.catch(error => {
-      Js.Console.error2("Error selecting track from queue:", error)
-      Promise.resolve()
-    })
-    ->ignore
-  }
+  let (state, dispatch) = PlayerContext.usePlayerReducer()
 
   <Mui.ThemeProvider theme={Theme(Theme.theme)}>
     <Mui.CssBaseline />
@@ -75,9 +39,7 @@ let make = () => {
         | Route.Settings => <SettingsPage />
         | Route.Visualizer => <VisualizerPage onExit={() => handlePageChange(Route.MusicPlayer)} />
         }}
-        <QueueDrawer
-          isOpen={isQueueDrawerOpen} onClose={handleQueueClose} onTrackSelect={handleTrackSelect}
-        />
+        <QueueDrawer isOpen={isQueueDrawerOpen} onClose={handleQueueClose} />
       </div>
     </PlayerProvider>
   </Mui.ThemeProvider>

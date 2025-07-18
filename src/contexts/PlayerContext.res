@@ -1,16 +1,6 @@
 open TrackService
 open State
 
-type playerState = {
-  currentTrack: option<Track.t>,
-  queue: array<Track.t>,
-  hasHistory: bool,
-  position: float,
-  volume: float,
-  state: State.t,
-  spectrumData: array<float>,
-}
-
 type playerAction =
   | SetCurrentTrack(option<Track.t>)
   | SetQueue(array<Track.t>)
@@ -20,29 +10,31 @@ type playerAction =
   | SetState(State.t)
   | SetSpectrumData(array<float>)
 
-type playerContextType = {
+type playerState = {
   currentTrack: option<Track.t>,
   queue: array<Track.t>,
   hasHistory: bool,
   position: float,
   volume: float,
   state: State.t,
-  setState: State.t => unit,
   spectrumData: array<float>,
   cleanupListeners: unit => unit,
+  dispatch: playerAction => unit,
 }
 
-let playerContext = React.createContext({
+let initialPlayerState: playerState = {
   currentTrack: None,
   queue: [],
   hasHistory: false,
   position: 0.0,
   volume: 0.5,
   state: State.Stopped,
-  setState: _ => (),
-  cleanupListeners: () => (),
   spectrumData: [],
-})
+  cleanupListeners: () => (),
+  dispatch: _ => (),
+}
+
+let playerContext = React.createContext(initialPlayerState)
 
 module Provider = {
   let make = React.Context.provider(playerContext)
@@ -50,8 +42,9 @@ module Provider = {
 
 module PlayerProvider = {
   @react.component
-  let make = (~state: playerState, ~dispatch, ~children) => {
+  let make = (~children, ~state, ~dispatch) => {
     let cleanupRef = React.useRef(() => ())
+    let cleanupListeners = () => cleanupRef.current()
 
     React.useEffect(() => {
       let setupEventListeners = async () => {
@@ -121,15 +114,9 @@ module PlayerProvider = {
     }, [])
 
     let contextValue = {
-      currentTrack: state.currentTrack,
-      queue: state.queue,
-      hasHistory: state.hasHistory,
-      position: state.position,
-      volume: state.volume,
-      state: state.state,
-      spectrumData: state.spectrumData,
-      setState: newState => dispatch(SetState(newState)),
-      cleanupListeners: () => cleanupRef.current(),
+      ...state,
+      dispatch,
+      cleanupListeners,
     }
 
     <Provider value={contextValue}> children </Provider>
@@ -138,4 +125,20 @@ module PlayerProvider = {
 
 let usePlayer = () => {
   React.useContext(playerContext)
+}
+
+let usePlayerReducer = () => {
+  let playerReducer = (state: playerState, action: playerAction) => {
+    switch action {
+    | SetCurrentTrack(track) => {...state, currentTrack: track}
+    | SetQueue(queue) => {...state, queue}
+    | SetHasHistory(hasHistory) => {...state, hasHistory}
+    | SetPosition(position) => {...state, position}
+    | SetVolume(volume) => {...state, volume}
+    | SetState(playerState) => {...state, state: playerState}
+    | SetSpectrumData(spectrumData) => {...state, spectrumData}
+    }
+  }
+
+  React.useReducer(playerReducer, initialPlayerState)
 }
