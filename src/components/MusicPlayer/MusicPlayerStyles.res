@@ -1,5 +1,14 @@
 open CssJs
-let container = style([maxWidth(rem(100.)), margin(auto), padding(rem(1.))])
+let container = style([
+  maxWidth(rem(100.)), 
+  margin(auto), 
+  padding(rem(1.)),
+  minHeight(vh(100.)),
+  display(flexBox),
+  flexDirection(column),
+  justifyContent(center),
+  alignItems(center)
+])
 let art = style([
   width(#percent(100.)),
   height(auto),
