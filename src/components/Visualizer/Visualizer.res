@@ -6,7 +6,12 @@
 @get external width: Dom.element => int = "width"
 @get external height: Dom.element => int = "height"
 @send external setAttribute: (Dom.element, string, string) => unit = "setAttribute"
-@send external getBoundingClientRect: Dom.element => {"width": float, "height": float} = "getBoundingClientRect"
+type rectangle = {
+  width: float,
+  height: float,
+}
+@send
+external getBoundingClientRect: Dom.element => rectangle = "getBoundingClientRect"
 
 type glContext = {
   canvas: Dom.element,
@@ -108,13 +113,7 @@ let initWebGL = (canvas: Dom.element, fragmentShaderSource: string): option<glCo
   }
 }
 
-let render = (
-  context: glContext,
-  time: float,
-  progress: float,
-  spectrumData: array<float>,
-  smoothedSpectrumRef: React.ref<array<float>>,
-) => {
+let render = (context: glContext, time: float, progress: float, spectrumData: array<float>) => {
   let gl = context.gl
 
   // Get actual canvas buffer dimensions
@@ -145,39 +144,16 @@ let render = (
     canvasWidth->Int.toFloat,
     canvasHeight->Int.toFloat,
   )
-
-  // Apply ease-in transition to spectrum data
-  let transitionFactor = 0.15 // Controls transition speed (lower = smoother)
-  let smoothedSpectrum = smoothedSpectrumRef.current
   let copyLen = Js.Math.min_int(Array.length(spectrumData), 64)
 
-  for i in 0 to copyLen - 1 {
-    switch spectrumData[i] {
-    | Some(currentValue) => {
-        let clampedValue = Js.Math.max_float(0.0, Js.Math.min_float(1.0, currentValue))
-        let previousValue = switch smoothedSpectrum[i] {
-        | Some(value) => value
-        | None => 0.0
-        }
-        // Ease-in transition: t^2 for smooth acceleration
-        let t = transitionFactor
-        let easedT = t *. t
-        let easedValue = previousValue *. (1.0 -. easedT) +. clampedValue *. easedT
-        smoothedSpectrum[i] = easedValue
-      }
-    | None => ()
-    }
-  }
-
   // Update spectrum texture
-  // Convert smoothed spectrum data to Uint8Array (0-255 range)
   let paddedSpectrum = Array.make(~length=64, 0)
   for i in 0 to copyLen - 1 {
-    let smoothedValue = switch smoothedSpectrum[i] {
+    let value = switch spectrumData[i] {
     | Some(value) => value
     | None => 0.0
     }
-    let intValue = Int.fromFloat(smoothedValue *. 255.0)
+    let intValue = Int.fromFloat(value *. 255.0)
     paddedSpectrum[i] = intValue
   }
 
@@ -217,21 +193,20 @@ let make = (
   let progressRef = React.useRef(progress)
   let spectrumDataRef = React.useRef(spectrumData)
   let fragmentShaderRef = React.useRef(fragmentShader)
-  let smoothedSpectrumRef = React.useRef(Array.make(~length=64, 0.0))
 
   let updateCanvasSize = () => {
     switch canvasRef.current->Nullable.toOption {
     | None => ()
     | Some(canvas) => {
         let rect = canvas->getBoundingClientRect
-        let displayWidth = rect.width->Float.toInt
-        let displayHeight = rect.height->Float.toInt
+        let displayWidth = Float.toInt(rect.width)
+        let displayHeight = Float.toInt(rect.height)
         let devicePixelRatio = %raw(`window.devicePixelRatio || 1.0`)
 
-        let actualWidth = (displayWidth->Int.toFloat *. devicePixelRatio)->Float.toInt
-        let actualHeight = (displayHeight->Int.toFloat *. devicePixelRatio)->Float.toInt
+        let actualWidth = (Int.toFloat(displayWidth) *. devicePixelRatio)->Float.toInt
+        let actualHeight = (Int.toFloat(displayHeight) *. devicePixelRatio)->Float.toInt
 
-        if actualWidth !== canvas->width || actualHeight !== canvas->height {
+        if actualWidth !== width || actualHeight !== height {
           canvas->setAttribute("width", actualWidth->Int.toString)
           canvas->setAttribute("height", actualHeight->Int.toString)
         }
@@ -255,7 +230,7 @@ let make = (
         | Some(t) => t
         }
         let time = (now -. startTime) /. 1000.0
-        render(context, time, progress, spectrumData, smoothedSpectrumRef)
+        render(context, time, progress, spectrumData)
       }
     }
     None
@@ -269,7 +244,6 @@ let make = (
       | None => Js.Console.error("Failed to initialize WebGL")
       | Some(context) => {
           contextRef.current = Some(context)
-
           let rec animate = () => {
             updateCanvasSize()
 
@@ -283,7 +257,7 @@ let make = (
             }
 
             let time = (now -. startTime) /. 1000.0
-            render(context, time, progressRef.current, spectrumDataRef.current, smoothedSpectrumRef)
+            render(context, time, progressRef.current, spectrumDataRef.current)
 
             animationRef.current = Some(requestAnimationFrame(animate))
           }
