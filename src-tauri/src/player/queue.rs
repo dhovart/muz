@@ -25,12 +25,24 @@ impl Queue {
         self.tracks.is_empty()
     }
 
+    pub fn contains_id(&self, id: &str) -> bool {
+        self.tracks.iter().any(|t| t.id == id)
+    }
+
     pub fn prepend(&mut self, track: Track) {
-        self.tracks.insert(0, track);
+        if !self.contains_id(&track.id) {
+            self.tracks.insert(0, track);
+        } else {
+            // if it already exists in queue, move it to the front
+            let from = self.tracks.iter().position(|t| t.id == track.id).unwrap();
+            self.move_item(from, 0);
+        }
     }
 
     pub fn enqueue(&mut self, track: Track) {
-        self.tracks.push(track);
+        if !self.contains_id(&track.id) {
+            self.tracks.push(track);
+        }
     }
 
     pub fn dequeue(&mut self) -> Option<Track> {
