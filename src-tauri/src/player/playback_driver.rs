@@ -71,10 +71,7 @@ impl DefaultPlaybackDriver {
                                 controller = Some(ctrl);
 
                                 thread::spawn(move || {
-                                    if let Err(err) = notifier.recv() {
-                                        eprintln!("Error receiving notification: {err}");
-                                        return;
-                                    }
+                                    let _ = notifier.recv();
                                     let _ = playback_sender.send(PlaybackEvent::TrackCompleted);
                                 });
 
