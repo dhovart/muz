@@ -217,10 +217,12 @@ impl Playback {
 
         // Prepend current track to queue before switching to previous
         if let Some(current_track) = self.current_track.clone() {
-            self.prepend(current_track);
-            self.event_sender
-                .send(PlaybackEvent::QueueChanged(self.get_queue()))
-                .ok();
+            if !self.current_track_added_to_history {
+                self.prepend(current_track);
+                self.event_sender
+                    .send(PlaybackEvent::QueueChanged(self.get_queue()))
+                    .ok();
+            }
         }
 
         let mut history_changed = false;
