@@ -29,6 +29,7 @@ let make = () => {
   let albumArtUrl = "http://picsum.photos/1200/1200"
 
   let player = PlayerContext.usePlayer()
+  let hasQueue = React.useMemo(() => player.queue->Array.length > 0, [player.queue])
 
   let invokePlayerCommand = async command => {
     try {
@@ -110,7 +111,7 @@ let make = () => {
           onClick={_ => handlePlayPause()->ignore}>
           {player.state == State.Playing ? <Pause /> : <PlayArrow />}
         </Fab>
-        <IconButton onClick={_ => handleNext()->ignore}>
+        <IconButton onClick={_ => handleNext()->ignore} disabled={!hasQueue}>
           <SkipNext />
         </IconButton>
       </div>
