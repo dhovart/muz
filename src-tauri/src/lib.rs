@@ -48,6 +48,7 @@ struct QueueChangedEvent {
 struct ProgressEvent {
     position_percent: f64,
     frames_played: u64,
+    spectrum_data: Vec<f32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -161,10 +162,11 @@ pub fn run() {
                 Arc::new(Mutex::new(None));
             let progress_channel_clone = progress_channel.clone();
 
-            let on_progress = move |progress, frames_played| {
+            let on_progress = move |progress, frames_played, spectrum_data| {
                 let event = ProgressEvent {
                     position_percent: progress,
                     frames_played,
+                    spectrum_data,
                 };
                 if let Ok(channel_guard) = progress_channel_clone.lock() {
                     if let Some(ref channel) = *channel_guard {

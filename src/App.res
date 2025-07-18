@@ -28,6 +28,7 @@ let make = () => {
     | SetPosition(position) => {...state, position}
     | SetVolume(volume) => {...state, volume}
     | SetState(playerState) => {...state, state: playerState}
+    | SetSpectrumData(spectrumData) => {...state, spectrumData}
     }
   }
 
@@ -40,6 +41,7 @@ let make = () => {
       position: 0.0,
       volume: 0.5,
       state: State.Stopped,
+      spectrumData: [],
     },
   )
 

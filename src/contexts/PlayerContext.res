@@ -8,6 +8,7 @@ type playerState = {
   position: float,
   volume: float,
   state: State.t,
+  spectrumData: array<float>,
 }
 
 type playerAction =
@@ -17,6 +18,7 @@ type playerAction =
   | SetPosition(float)
   | SetVolume(float)
   | SetState(State.t)
+  | SetSpectrumData(array<float>)
 
 type playerContextType = {
   currentTrack: option<Track.t>,
@@ -26,6 +28,7 @@ type playerContextType = {
   volume: float,
   state: State.t,
   setState: State.t => unit,
+  spectrumData: array<float>,
   cleanupListeners: unit => unit,
 }
 
@@ -38,6 +41,7 @@ let playerContext = React.createContext({
   state: State.Stopped,
   setState: _ => (),
   cleanupListeners: () => (),
+  spectrumData: [],
 })
 
 module Provider = {
@@ -89,6 +93,7 @@ module PlayerProvider = {
           let _ = await TrackService.subscribeToProgress(message => {
             let position = message.positionPercent->Js.Int.toFloat /. 100.0
             dispatch(SetPosition(position))
+            dispatch(SetSpectrumData(message.spectrumData))
           })
 
           let cleanup = () => {
@@ -123,6 +128,7 @@ module PlayerProvider = {
       position: state.position,
       volume: state.volume,
       state: state.state,
+      spectrumData: state.spectrumData,
       setState: newState => dispatch(SetState(newState)),
       cleanupListeners: () => cleanupRef.current(),
     }

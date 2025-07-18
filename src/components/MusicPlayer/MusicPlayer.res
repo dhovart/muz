@@ -21,9 +21,6 @@ open State
 open Mui
 open Command
 
-type progressEvent = {positionPercent: int}
-type progressSubscriptionPayload = {onProgress: Tauri.channelType<progressEvent>}
-
 @react.component
 let make = () => {
   let albumArtUrl = "http://picsum.photos/1200/1200"
@@ -84,6 +81,7 @@ let make = () => {
       container=true
       direction=Column>
       <img className={MusicPlayerStyles.art} src=albumArtUrl alt="Album Art" />
+      <SpectrumVisualizer spectrumData={player.spectrumData} />
       <div>
         <Typography variant={H6}>
           {React.string(

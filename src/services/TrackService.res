@@ -14,7 +14,7 @@ let controlPlayback = async (command: Command.t): State.t => {
   }
 }
 
-type progressEvent = {positionPercent: int}
+type progressEvent = {positionPercent: int, spectrumData: array<float>}
 
 let subscribeToProgress = (onProgress: progressEvent => unit): Promise.t<unit> => {
   let channel: Tauri.channelType<progressEvent> = Tauri.channel()
