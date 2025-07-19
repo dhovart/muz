@@ -15,12 +15,19 @@ let controlPlayback = async (command: Command.t): State.t => {
   parsePlaybackState(result)
 }
 
-type progressEvent = {position: float, spectrumData: array<float>}
+type progressEvent = {position: float, framesPlayed: int}
+type spectrumEvent = {spectrumData: array<float>}
 
 let subscribeToProgress = (onProgress: progressEvent => unit): Promise.t<unit> => {
   let channel: Tauri.channelType<progressEvent> = Tauri.channel()
   channel.onmessage = onProgress
   Tauri.invoke("subscribe_to_progress", {"onProgress": channel})
+}
+
+let subscribeToSpectrum = (onSpectrum: spectrumEvent => unit): Promise.t<unit> => {
+  let channel: Tauri.channelType<spectrumEvent> = Tauri.channel()
+  channel.onmessage = onSpectrum
+  Tauri.invoke("subscribe_to_spectrum", {"onSpectrum": channel})
 }
 
 let selectTrackFromQueue = async (trackId: string): State.t => {

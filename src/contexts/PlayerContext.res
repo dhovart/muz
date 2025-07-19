@@ -1,22 +1,16 @@
-open PlaybackService
-
 type playerAction =
   | SetCurrentTrack(option<Track.t>)
   | SetQueue(array<Track.t>)
   | SetHasHistory(bool)
-  | SetPosition(float)
   | SetVolume(float)
   | SetState(State.t)
-  | SetSpectrumData(array<float>)
 
 type playerState = {
   currentTrack: option<Track.t>,
   queue: array<Track.t>,
   hasHistory: bool,
-  position: float,
   volume: float,
   state: State.t,
-  spectrumData: array<float>,
   cleanupListeners: unit => unit,
   dispatch: playerAction => unit,
 }
@@ -25,10 +19,8 @@ let initialPlayerState: playerState = {
   currentTrack: None,
   queue: [],
   hasHistory: false,
-  position: 0.0,
   volume: 0.5,
   state: State.Stopped,
-  spectrumData: [],
   cleanupListeners: () => (),
   dispatch: _ => (),
 }
@@ -80,13 +72,6 @@ module PlayerProvider = {
             dispatch(SetHasHistory(payload["hasHistory"]))
           })
 
-          // Subscribe to progress updates
-          let _ = await PlaybackService.subscribeToProgress(message => {
-            let position = message.position
-            dispatch(SetPosition(position))
-            dispatch(SetSpectrumData(message.spectrumData))
-          })
-
           let cleanup = () => {
             unlistenTrackChanged()->ignore
             unlistenQueueChanged()->ignore
@@ -132,10 +117,8 @@ let usePlayerReducer = () => {
     | SetCurrentTrack(track) => {...state, currentTrack: track}
     | SetQueue(queue) => {...state, queue}
     | SetHasHistory(hasHistory) => {...state, hasHistory}
-    | SetPosition(position) => {...state, position}
     | SetVolume(volume) => {...state, volume}
     | SetState(playerState) => {...state, state: playerState}
-    | SetSpectrumData(spectrumData) => {...state, spectrumData}
     }
   }
 

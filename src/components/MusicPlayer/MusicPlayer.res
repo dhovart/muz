@@ -20,10 +20,12 @@ module Pause = {
 open Mui
 open State
 open Command
+open UseProgressData
 
 @react.component
 let make = () => {
   let player = PlayerContext.usePlayer()
+  let (position, _framesPlayed) = useProgressData()
   let hasQueue = React.useMemo(() => player.queue->Array.length > 0, [player.queue])
 
   let invokePlayerCommand = async command => {
@@ -66,10 +68,7 @@ let make = () => {
       Js.log2("Track found:", Track.displayTitle(track))
       let seekPositionMs = Track.getSeekPositionMs(track, value)
       Js.log2("Calculated seek position:", seekPositionMs)
-      
-      // Immediately update the progress bar position
-      player.dispatch(PlayerContext.SetPosition(value))
-      
+
       // Send seek command to backend
       invokePlayerCommand(Command.Seek(seekPositionMs))->ignore
     | None => Js.log("No current track for seeking")
@@ -106,7 +105,7 @@ let make = () => {
       </div>
       <Slider
         className={MusicPlayerStyles.track}
-        value=player.position
+        value=position
         step=Number(0.001)
         max=1.0
         onChange={(_, value, _) => handleSeek(value, player.currentTrack)->ignore}

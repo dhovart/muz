@@ -12,7 +12,8 @@ pub enum PlaybackEvent {
     FailedOpeningFile(Error),
     TrackCompleted,
     Shutdown,
-    Progress(f64, u64, Vec<f32>), // percent completed, frames played, and spectrum data
+    Progress(f64, u64), // percent completed, frames played
+    Spectrum(Vec<f32>), // spectrum data
     TrackChanged(Option<Track>),
     QueueChanged(Vec<Track>),
 }
@@ -37,7 +38,8 @@ pub struct Playback {
 impl Playback {
     pub fn create(
         driver: Box<dyn PlaybackDriver>,
-        on_progress_update: impl Fn(f64, u64, Vec<f32>) + Send + 'static,
+        on_progress_update: impl Fn(f64, u64) + Send + 'static,
+        on_spectrum_update: impl Fn(Vec<f32>) + Send + 'static,
         on_history_update: impl Fn(&Vec<Track>, Option<&Track>) + Send + 'static,
         on_track_changed: impl Fn(Option<&Track>) + Send + 'static,
         on_queue_changed: impl Fn(&Vec<Track>) + Send + 'static,
@@ -86,11 +88,18 @@ impl Playback {
                     PlaybackEvent::QueueChanged(queue) => {
                         on_queue_changed(&queue);
                     }
-                    PlaybackEvent::Progress(percent, frames_played, spectrum_data) => {
+                    PlaybackEvent::Progress(percent, frames_played) => {
                         if let Ok(mut playback) = playback_clone.lock() {
                             if playback.state == PlaybackState::Playing {
                                 playback.progress = percent;
-                                on_progress_update(percent, frames_played, spectrum_data);
+                                on_progress_update(percent, frames_played);
+                            }
+                        }
+                    }
+                    PlaybackEvent::Spectrum(spectrum_data) => {
+                        if let Ok(playback) = playback_clone.lock() {
+                            if playback.state == PlaybackState::Playing {
+                                on_spectrum_update(spectrum_data);
                             }
                         }
                     }

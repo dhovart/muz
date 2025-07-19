@@ -23,6 +23,7 @@ pub struct AppState {
     pub playback_service: PlaybackService,
     pub library_service: LibraryService,
     pub progress_channel: Arc<Mutex<Option<Channel<ProgressEvent>>>>,
+    pub spectrum_channel: Arc<Mutex<Option<Channel<SpectrumEvent>>>>,
     pub config: Arc<Mutex<AppConfig>>,
 }
 
@@ -35,15 +36,26 @@ pub fn run() {
 
             let progress_channel: Arc<Mutex<Option<Channel<ProgressEvent>>>> =
                 Arc::new(Mutex::new(None));
+            let spectrum_channel: Arc<Mutex<Option<Channel<SpectrumEvent>>>> =
+                Arc::new(Mutex::new(None));
             let progress_channel_clone = progress_channel.clone();
+            let spectrum_channel_clone = spectrum_channel.clone();
 
-            let on_progress = move |progress, frames_played, spectrum_data| {
+            let on_progress = move |progress, frames_played| {
                 let event = ProgressEvent {
                     position: progress,
                     frames_played,
-                    spectrum_data,
                 };
                 if let Ok(channel_guard) = progress_channel_clone.lock() {
+                    if let Some(ref channel) = *channel_guard {
+                        let _ = channel.send(event);
+                    }
+                }
+            };
+
+            let on_spectrum = move |spectrum_data| {
+                let event = SpectrumEvent { spectrum_data };
+                if let Ok(channel_guard) = spectrum_channel_clone.lock() {
                     if let Some(ref channel) = *channel_guard {
                         let _ = channel.send(event);
                     }
@@ -82,6 +94,7 @@ pub fn run() {
             let playback = Playback::create(
                 playback_driver,
                 on_progress,
+                on_spectrum,
                 on_history_update,
                 on_track_changed,
                 on_queue_changed,
@@ -104,6 +117,7 @@ pub fn run() {
                 playback_service,
                 library_service,
                 progress_channel,
+                spectrum_channel,
                 config: Arc::new(Mutex::new(config)),
             });
             Ok(())
@@ -113,6 +127,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             control_playback,
             subscribe_to_progress,
+            subscribe_to_spectrum,
             get_library_path,
             set_library_path,
             rescan_library,

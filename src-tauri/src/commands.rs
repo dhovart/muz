@@ -5,7 +5,7 @@ use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use tauri::{ipc::Channel, State};
 
-use crate::{AppState, ProgressEvent};
+use crate::{AppState, ProgressEvent, SpectrumEvent};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -28,6 +28,12 @@ impl PlaybackError {
 pub fn subscribe_to_progress(state: State<'_, AppState>, on_progress: Channel<ProgressEvent>) {
     let mut channel_guard = state.progress_channel.lock().unwrap();
     *channel_guard = Some(on_progress);
+}
+
+#[tauri::command]
+pub fn subscribe_to_spectrum(state: State<'_, AppState>, on_spectrum: Channel<SpectrumEvent>) {
+    let mut channel_guard = state.spectrum_channel.lock().unwrap();
+    *channel_guard = Some(on_spectrum);
 }
 
 #[tauri::command]

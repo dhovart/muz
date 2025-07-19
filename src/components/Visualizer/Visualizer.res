@@ -20,7 +20,6 @@ type glContext = {
   buffer: WebGL.buffer,
   spectrumTexture: WebGL.texture,
   timeLocation: WebGL.uniformLocation,
-  progressLocation: WebGL.uniformLocation,
   spectrumTextureLocation: WebGL.uniformLocation,
   resolutionLocation: WebGL.uniformLocation,
 }
@@ -92,7 +91,6 @@ let initWebGL = (canvas: Dom.element, fragmentShaderSource: string): option<glCo
 
           // Get uniform locations
           let timeLocation = gl->WebGL.getUniformLocation(program, "u_time")
-          let progressLocation = gl->WebGL.getUniformLocation(program, "u_progress")
           let spectrumTextureLocation = gl->WebGL.getUniformLocation(program, "u_spectrumTexture")
           let resolutionLocation = gl->WebGL.getUniformLocation(program, "u_resolution")
 
@@ -103,7 +101,6 @@ let initWebGL = (canvas: Dom.element, fragmentShaderSource: string): option<glCo
             buffer,
             spectrumTexture,
             timeLocation,
-            progressLocation,
             spectrumTextureLocation,
             resolutionLocation,
           })
@@ -113,7 +110,7 @@ let initWebGL = (canvas: Dom.element, fragmentShaderSource: string): option<glCo
   }
 }
 
-let render = (context: glContext, time: float, progress: float, spectrumData: array<float>) => {
+let render = (context: glContext, time: float, spectrumData: array<float>) => {
   let gl = context.gl
 
   // Get actual canvas buffer dimensions
@@ -138,7 +135,6 @@ let render = (context: glContext, time: float, progress: float, spectrumData: ar
 
   // Set uniforms
   gl->WebGL.uniform1f(context.timeLocation, time)
-  gl->WebGL.uniform1f(context.progressLocation, progress)
   gl->WebGL.uniform2f(
     context.resolutionLocation,
     canvasWidth->Int.toFloat,
@@ -179,7 +175,6 @@ let render = (context: glContext, time: float, progress: float, spectrumData: ar
 
 @react.component
 let make = (
-  ~progress: float,
   ~spectrumData: array<float>,
   ~width: int=640,
   ~height: int=200,
@@ -190,7 +185,6 @@ let make = (
   let contextRef = React.useRef(None)
   let animationRef = React.useRef(None)
   let startTimeRef = React.useRef(None)
-  let progressRef = React.useRef(progress)
   let spectrumDataRef = React.useRef(spectrumData)
   let fragmentShaderRef = React.useRef(fragmentShader)
 
@@ -214,13 +208,10 @@ let make = (
     }
   }
 
-  // Update refs when props change
   React.useEffect(() => {
-    progressRef.current = progress
     spectrumDataRef.current = spectrumData
     fragmentShaderRef.current = fragmentShader
 
-    // Force a single render with new data
     switch contextRef.current {
     | None => ()
     | Some(context) => {
@@ -230,11 +221,11 @@ let make = (
         | Some(t) => t
         }
         let time = (now -. startTime) /. 1000.0
-        render(context, time, progress, spectrumData)
+        render(context, time, spectrumData)
       }
     }
     None
-  }, (progress, spectrumData, fragmentShader))
+  }, (spectrumData, fragmentShader))
 
   React.useEffect(() => {
     switch canvasRef.current->Nullable.toOption {
@@ -257,7 +248,7 @@ let make = (
             }
 
             let time = (now -. startTime) /. 1000.0
-            render(context, time, progressRef.current, spectrumDataRef.current)
+            render(context, time, spectrumDataRef.current)
 
             animationRef.current = Some(requestAnimationFrame(animate))
           }

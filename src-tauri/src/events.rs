@@ -25,5 +25,10 @@ pub struct QueueChangedEvent {
 pub struct ProgressEvent {
     pub position: f64,
     pub frames_played: u64,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SpectrumEvent {
     pub spectrum_data: Vec<f32>,
 }

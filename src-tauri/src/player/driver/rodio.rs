@@ -264,6 +264,8 @@ pub mod rodio_impl {
                     let _ = self.playback_sender.send(PlaybackEvent::Progress(
                         percent_completed,
                         frames_played,
+                    ));
+                    let _ = self.playback_sender.send(PlaybackEvent::Spectrum(
                         self.cached_spectrum.clone(),
                     ));
                 }

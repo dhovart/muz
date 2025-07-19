@@ -76,18 +76,16 @@ pub mod awedio_impl {
                         0
                     };
 
+                    let progress_sender_clone = progress_sender.clone();
                     let sound = WithProgressAndSpectrum::new(
                         sound,
                         track.total_frames,
                         samples_played,
                         Box::new(move |progress, frames_played, spectrum_data| {
-                            progress_sender
-                                .send(PlaybackEvent::Progress(
-                                    progress,
-                                    frames_played,
-                                    spectrum_data,
-                                ))
-                                .unwrap();
+                            let _ = progress_sender
+                                .send(PlaybackEvent::Progress(progress, frames_played));
+                            let _ = progress_sender_clone
+                                .send(PlaybackEvent::Spectrum(spectrum_data));
                         }),
                     );
 

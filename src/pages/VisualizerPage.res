@@ -1,6 +1,8 @@
+open UseSpectrumData
+
 @react.component
 let make = (~onExit: unit => unit=() => ()) => {
-  let player = PlayerContext.usePlayer()
+  let spectrumData = useSpectrumData()
   let (selectedShader, setSelectedShader) = React.useState(() => "colorful_thingy")
   let (shaderSource, setShaderSource) = React.useState(() => Shaders.simpleFragmentShader)
   let (showControls, setShowControls) = React.useState(() => true)
@@ -62,8 +64,7 @@ let make = (~onExit: unit => unit=() => ()) => {
       zIndex: "1000",
     }}>
     <Visualizer
-      spectrumData={player.spectrumData}
-      progress={player.position}
+      spectrumData={spectrumData}
       fragmentShader={shaderSource}
       width={1920}
       height={1080}
