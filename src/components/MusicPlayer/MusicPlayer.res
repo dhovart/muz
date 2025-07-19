@@ -79,15 +79,17 @@ let make = () => {
       container=true
       direction=Column>
       <div>
-        <Typography variant={H6}>
-          {React.string(
-            switch player.currentTrack {
-            | Some(track) => track->Track.displayTitle
-            | None => "No track selected"
-            },
-          )}
-        </Typography>
-        <Typography variant={Subtitle1}> {React.string("Unknown Artist")} </Typography>
+        {switch player.currentTrack {
+        | Some(track) =>
+          <>
+            <Typography variant={H6}> {track->Track.displayTitle->React.string} </Typography>
+            <Typography variant={Subtitle1}>
+              {track->Track.displayArtist->React.string}
+            </Typography>
+          </>
+
+        | None => <Typography variant={H6}> {React.string("No track selected")} </Typography>
+        }}
       </div>
       <Slider
         className={MusicPlayerStyles.track}

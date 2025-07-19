@@ -5,14 +5,14 @@ open LibraryViewStyles
 let make = () => {
   let player = PlayerContext.usePlayer()
 
-  let (tracks, setTracks) = React.useState(_ => [])
+  let (albumsMap, setAlbumsMap) = React.useState(_ => Js.Dict.empty())
   let (loading, setLoading) = React.useState(_ => true)
 
   let loadTracks = React.useCallback0(() => {
     setLoading(_ => true)
     TrackService.getLibraryTracks()
-    ->Promise.then(tracks => {
-      setTracks(_ => tracks)
+    ->Promise.then(albumsMap => {
+      setAlbumsMap(_ => albumsMap)
       setLoading(_ => false)
       Promise.resolve()
     })
@@ -41,8 +41,6 @@ let make = () => {
       ? <div>
           <Mui.CircularProgress />
         </div>
-      : <TrackList
-          tracks currentTrack=player.currentTrack onTrackSelect=handleTrackSelect context="library"
-        />}
+      : <Albums albumsMap currentTrack=player.currentTrack onTrackSelect=handleTrackSelect />}
   </div>
 }

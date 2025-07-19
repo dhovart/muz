@@ -10,11 +10,23 @@ use symphonia::core::probe::{Hint, ProbeResult};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrackMetadata {
+    pub title: Option<String>,
+    pub album: Option<String>,
+    pub artist: Option<String>,
+    pub album_artist: Option<String>,
+    pub track_number: Option<i32>,
+    pub disc_number: Option<i32>,
+    pub genre: Option<String>,
+    pub year: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Track {
     pub id: String,
     pub path: PathBuf,
-    pub title: Option<String>,
     pub total_frames: u64,
+    pub metadata: Option<TrackMetadata>,
 }
 
 pub static SUPPORTED_EXTENSIONS: &[&str] = &[
@@ -25,15 +37,15 @@ pub static SUPPORTED_EXTENSIONS: &[&str] = &[
 
 impl Track {
     pub fn new<P: Into<PathBuf> + AsRef<Path>>(path: P) -> Self {
-        let (total_frames, title) = Self::get_metadata(path.as_ref());
+        let (total_frames, metadata) = Self::get_metadata(path.as_ref());
         if total_frames.is_none() {
             eprintln!("Failed to get total frames for track: {:?}", path.as_ref());
         }
         Self {
             id: Uuid::new_v4().to_string(),
-            title: title.or(Some(Self::default_title(path.as_ref()))),
             path: path.into(),
             total_frames: total_frames.unwrap_or(0),
+            metadata,
         }
     }
 
@@ -44,18 +56,52 @@ impl Track {
             .to_string()
     }
 
-    fn get_title_from_probe(probed: &mut ProbeResult) -> Result<String> {
-        let metadata = &mut probed.metadata;
-        if let Some(metadata) = metadata.get() {
-            if let Some(revision) = metadata.current() {
-                for tag in revision.tags() {
-                    if let Some(StandardTagKey::TrackTitle) = tag.std_key {
-                        return Ok(tag.value.to_string());
+    fn get_metadata_from_probe(mut probed: ProbeResult) -> TrackMetadata {
+        let mut meta = TrackMetadata {
+            title: None,
+            album: None,
+            artist: None,
+            album_artist: None,
+            track_number: None,
+            disc_number: None,
+            genre: None,
+            year: None,
+        };
+
+        let mut fill_from_tags = |tags: &[symphonia::core::meta::Tag]| {
+            for tag in tags {
+                match tag.std_key {
+                    Some(StandardTagKey::TrackTitle) => meta.title = Some(tag.value.to_string()),
+                    Some(StandardTagKey::Album) => meta.album = Some(tag.value.to_string()),
+                    Some(StandardTagKey::Artist) => meta.artist = Some(tag.value.to_string()),
+                    Some(StandardTagKey::AlbumArtist) => {
+                        meta.album_artist = Some(tag.value.to_string())
                     }
+                    Some(StandardTagKey::TrackNumber) => {
+                        let s = tag.value.to_string();
+                        meta.track_number = s.parse::<i32>().ok();
+                    }
+                    Some(StandardTagKey::DiscNumber) => {
+                        let s = tag.value.to_string();
+                        meta.disc_number = s.parse::<i32>().ok();
+                    }
+                    Some(StandardTagKey::Genre) => meta.genre = Some(tag.value.to_string()),
+                    Some(StandardTagKey::Date) => meta.year = Some(tag.value.to_string()),
+                    _ => {}
                 }
             }
+        };
+
+        if let Some(metadata_rev) = probed.format.metadata().skip_to_latest() {
+            fill_from_tags(metadata_rev.tags());
         }
-        Err(anyhow::anyhow!("No title found"))
+        let mut metadata = probed.metadata;
+        if let Some(mut m) = metadata.get() {
+            if let Some(metadata_rev) = m.skip_to_latest() {
+                fill_from_tags(metadata_rev.tags());
+            }
+        }
+        meta
     }
 
     fn get_total_frames_from_probe(probed: &ProbeResult) -> Result<u64> {
@@ -74,10 +120,13 @@ impl Track {
         }
     }
 
-    pub fn get_metadata(path: &Path) -> (Option<u64>, Option<String>) {
+    pub fn get_metadata(path: &Path) -> (Option<u64>, Option<TrackMetadata>) {
         let file = match File::open(path) {
             Ok(f) => f,
-            Err(_) => return (None, None),
+            Err(_) => {
+                eprintln!("Failed to open file: {:?}", path);
+                return (None, None);
+            }
         };
         let mss = MediaSourceStream::new(Box::new(file), Default::default());
 
@@ -95,13 +144,15 @@ impl Track {
             &MetadataOptions::default(),
         ) {
             Ok(p) => p,
-            Err(_) => return (None, None),
+            Err(_) => {
+                eprintln!("Failed to probe file: {:?}", path);
+                return (None, None);
+            }
         };
 
         let total_frames = Self::get_total_frames_from_probe(&probed).ok();
-        let title = Self::get_title_from_probe(&mut probed).ok();
-
-        (total_frames, title)
+        let metadata = Some(Self::get_metadata_from_probe(probed));
+        (total_frames, metadata)
     }
 }
 

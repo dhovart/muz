@@ -1,7 +1,7 @@
 open Command
 open State
 
-let getLibraryTracks = (): Promise.t<array<Track.t>> => {
+let getLibraryTracks = (): Promise.t<Js.Dict.t<array<Track.t>>> => {
   Tauri.invoke("get_library_tracks", ())
 }
 

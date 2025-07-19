@@ -1,7 +1,6 @@
 %%raw("import '@fontsource/inter'")
 
 open PlayerContext
-open State
 
 @react.component
 let make = () => {

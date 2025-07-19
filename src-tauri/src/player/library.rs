@@ -27,8 +27,12 @@ impl Library {
 
     fn build_tracks(&mut self) {
         self.tracks.clear();
+        let path = self.path.clone();
+        self.scan_directory_recursive(&path);
+    }
 
-        if let Ok(entries) = fs::read_dir(&self.path) {
+    fn scan_directory_recursive(&mut self, dir_path: &PathBuf) {
+        if let Ok(entries) = fs::read_dir(dir_path) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_file() {
@@ -38,6 +42,8 @@ impl Library {
                             self.tracks.push(track);
                         }
                     }
+                } else if path.is_dir() {
+                    self.scan_directory_recursive(&path);
                 }
             }
         }
@@ -56,7 +62,10 @@ impl Library {
     }
 
     pub fn get_track_by_id(&self, track_id: &str) -> Option<Track> {
-        self.tracks.iter().find(|track| track.id == track_id).cloned()
+        self.tracks
+            .iter()
+            .find(|track| track.id == track_id)
+            .cloned()
     }
 
     pub fn update(&mut self, path: Option<PathBuf>, name: Option<String>) {

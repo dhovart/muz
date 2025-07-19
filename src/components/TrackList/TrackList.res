@@ -7,6 +7,12 @@ let make = (
   ~onTrackSelect: option<Track.t => unit>=?,
   ~context: string="default",
 ) => {
+  Js.Array2.sortInPlaceWith(tracks, (a, b) =>
+    compare(
+      a.metadata.track_number->Belt.Option.getWithDefault(0),
+      b.metadata.track_number->Belt.Option.getWithDefault(0),
+    )
+  )->ignore
   let handleTrackClick = (track: Track.t) => {
     switch onTrackSelect {
     | Some(callback) => callback(track)

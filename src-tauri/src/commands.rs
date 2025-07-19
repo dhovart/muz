@@ -1,4 +1,5 @@
 use std::time::Duration;
+use std::collections::HashMap;
 
 use crate::player::{playback::PlaybackState, track::Track};
 use anyhow::Error;
@@ -102,9 +103,20 @@ pub fn rescan_library(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_library_tracks(state: State<'_, AppState>) -> Result<Vec<Track>, String> {
+pub fn get_library_tracks(state: State<'_, AppState>) -> Result<HashMap<String, Vec<Track>>, String> {
     let library = state.library.lock().map_err(|e| e.to_string())?;
-    Ok(library.get_tracks())
+    let tracks = library.get_tracks();
+    
+    let mut grouped: HashMap<String, Vec<Track>> = HashMap::new();
+    for track in tracks {
+        let album = track.metadata
+            .as_ref()
+            .and_then(|m| m.album.clone())
+            .unwrap_or_else(|| "Unknown Album".to_string());
+        grouped.entry(album).or_insert_with(Vec::new).push(track);
+    }
+    
+    Ok(grouped)
 }
 
 #[tauri::command]
