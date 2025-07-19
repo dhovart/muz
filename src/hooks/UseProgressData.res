@@ -4,7 +4,6 @@ let useProgressData = () => {
   let (position, setPosition) = React.useState(() => 0.0)
   let (framesPlayed, setFramesPlayed) = React.useState(() => 0)
 
-
   React.useEffect(() => {
     let subscription = async () => {
       try {
@@ -19,7 +18,7 @@ let useProgressData = () => {
 
     subscription()->ignore
 
-    None
+    None // FIXME how to unsubscribe from a tauri channel?
   }, [])
 
   (position, framesPlayed)
