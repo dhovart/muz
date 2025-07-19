@@ -1,11 +1,7 @@
-open Command
-open State
-
 let getLibraryTracks = (): Promise.t<Js.Dict.t<array<Track.t>>> => {
   Tauri.invoke("get_library_tracks", ())
 }
 
-// Helper function to parse playback state from string result
 let parsePlaybackState = (result: string): State.t => {
   switch result {
   | "Playing" => State.Playing

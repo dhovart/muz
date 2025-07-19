@@ -1,5 +1,4 @@
 open TrackService
-open State
 
 type playerAction =
   | SetCurrentTrack(option<Track.t>)

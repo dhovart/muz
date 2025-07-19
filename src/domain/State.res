@@ -1,3 +1,1 @@
-module State = {
-  type t = Playing | Paused | Stopped
-}
+type t = Playing | Paused | Stopped
