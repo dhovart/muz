@@ -59,9 +59,22 @@ let make = () => {
     }
   }, [player.state])
 
-  let handleSeek = React.useCallback(value => {
-    invokePlayerCommand(Command.Seek(value))->ignore
-  }, [])
+  let handleSeek = React.useCallback((value, currentTrack) => {
+    Js.log2("Seeking to position:", value)
+    switch currentTrack {
+    | Some(track) =>
+      Js.log2("Track found:", Track.displayTitle(track))
+      let seekPositionMs = Track.getSeekPositionMs(track, value)
+      Js.log2("Calculated seek position:", seekPositionMs)
+      
+      // Immediately update the progress bar position
+      player.dispatch(PlayerContext.SetPosition(value))
+      
+      // Send seek command to backend
+      invokePlayerCommand(Command.Seek(seekPositionMs))->ignore
+    | None => Js.log("No current track for seeking")
+    }
+  }, [player.dispatch])
 
   let handlePrev = React.useCallback(() => {
     invokePlayerCommand(Command.Previous)->ignore
@@ -94,8 +107,9 @@ let make = () => {
       <Slider
         className={MusicPlayerStyles.track}
         value=player.position
+        step=Number(0.001)
         max=1.0
-        onChange={(_, value, _) => handleSeek(value)->ignore}
+        onChange={(_, value, _) => handleSeek(value, player.currentTrack)->ignore}
       />
       <div>
         <IconButton onClick={_ => handlePrev()->ignore} disabled={!player.hasHistory}>

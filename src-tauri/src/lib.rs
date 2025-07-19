@@ -1,9 +1,12 @@
 use std::sync::{Arc, Mutex};
 
 use crate::player::{
-    library::Library, playback::Playback, playback_driver::DefaultPlaybackDriver, track::Track,
+    driver::factory::{DefaultDriverFactory, PlaybackDriverFactory},
+    library::Library,
+    playback::Playback,
+    track::Track,
 };
-use crate::services::{playback_service::PlaybackService, library_service::LibraryService};
+use crate::services::{library_service::LibraryService, playback_service::PlaybackService};
 use tauri::{ipc::Channel, Builder, Emitter, Manager};
 
 mod commands;
@@ -74,9 +77,10 @@ pub fn run() {
             };
 
             let volume = 1.0; // fetch from some settings
-            let playback_driver = DefaultPlaybackDriver::new(volume);
+            let playback_driver = DefaultDriverFactory::create_driver(volume)
+                .expect("Failed to create playback driver");
             let playback = Playback::create(
-                Box::new(playback_driver),
+                playback_driver,
                 on_progress,
                 on_history_update,
                 on_track_changed,

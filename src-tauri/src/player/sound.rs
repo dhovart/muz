@@ -38,6 +38,28 @@ impl<S: Sound> WithProgressAndSpectrum<S> {
             last_update_time: std::time::Instant::now(),
         }
     }
+
+    pub fn new_with_offset(
+        inner: S,
+        total_frames: u64,
+        samples_offset: u64,
+        on_update: Box<dyn Fn(f64, u64, Vec<f32>) + Send>,
+    ) -> Self {
+        let sample_rate = inner.sample_rate() as f32;
+        let spectrum_analyzer = Arc::new(Mutex::new(SpectrumAnalyzer::new(4096, sample_rate)));
+
+        WithProgressAndSpectrum {
+            inner,
+            total_frames,
+            samples_played: samples_offset,
+            on_update,
+            spectrum_analyzer,
+            sample_buffer: Vec::new(),
+            batch_size: 512,
+            cached_spectrum: Vec::new(),
+            last_update_time: std::time::Instant::now(),
+        }
+    }
 }
 
 impl<S> Wrapper for WithProgressAndSpectrum<S>
@@ -77,7 +99,7 @@ impl<S: Sound> Sound for WithProgressAndSpectrum<S> {
                 let total_samples = self.total_frames * self.inner.channel_count() as u64;
                 let frames_played = self.samples_played / self.inner.channel_count() as u64;
                 let percent_completed = if total_samples > 0 {
-                    (self.samples_played as f64 / total_samples as f64)
+                    self.samples_played as f64 / total_samples as f64
                 } else {
                     0.0
                 };

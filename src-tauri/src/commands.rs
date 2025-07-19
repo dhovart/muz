@@ -10,6 +10,7 @@ use tauri::{ipc::Channel, State};
 use crate::{AppState, ProgressEvent};
 
 #[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ControlPlaybackPayload {
     pub command: String,
     pub volume: Option<f32>,

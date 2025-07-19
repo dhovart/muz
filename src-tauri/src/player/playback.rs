@@ -1,4 +1,4 @@
-use crate::player::playback_driver::{AudioCommand, PlaybackDriver};
+use crate::player::driver::PlaybackDriver;
 use crate::player::{queue::Queue, track::Track};
 
 use anyhow::{anyhow, Error, Result};
@@ -173,12 +173,12 @@ impl Playback {
             };
         }
 
-        self.driver.send_command(AudioCommand::Play(
+        self.driver.play(
             self.current_track
                 .clone()
                 .ok_or_else(|| anyhow!("No track to play"))?,
             self.event_sender.clone(),
-        ))?;
+        )?;
         self.state = PlaybackState::Playing;
 
         Ok(self.state.clone())
@@ -195,8 +195,8 @@ impl Playback {
 
     pub fn previous(&mut self) -> Result<PlaybackState> {
         self.state = PlaybackState::Stopped;
-        self.driver.send_command(AudioCommand::Pause)?;
-        self.driver.send_command(AudioCommand::Clear)?;
+        self.driver.pause()?;
+        self.driver.clear()?;
 
         if let Some(current_track) = self.current_track.clone() {
             self.prepend(current_track);
@@ -231,7 +231,7 @@ impl Playback {
             PlaybackState::Paused => {
                 self.state = PlaybackState::Playing;
                 self.driver
-                    .send_command(AudioCommand::Resume)
+                    .resume()
                     .map_err(|e| anyhow!("Failed to resume playback: {e}"))?;
                 Ok(self.state.clone())
             }
@@ -243,7 +243,7 @@ impl Playback {
         if let PlaybackState::Playing = self.state {
             self.state = PlaybackState::Paused;
             self.driver
-                .send_command(AudioCommand::Pause)
+                .pause()
                 .map_err(|e| anyhow!("Failed to pause playback: {e}"))?;
         }
         Ok(self.state.clone())
@@ -253,24 +253,24 @@ impl Playback {
         self.state = PlaybackState::Stopped;
         self.current_track = None;
         self.driver
-            .send_command(AudioCommand::Pause)
+            .pause()
             .map_err(|e| anyhow!("Failed to stop playback: {e}"))?;
         self.driver
-            .send_command(AudioCommand::Clear)
+            .clear()
             .map_err(|e| anyhow!("Failed to stop playback: {e}"))?;
         Ok(self.state.clone())
     }
 
     pub fn seek(&mut self, position: Duration) -> Result<PlaybackState> {
         self.driver
-            .send_command(AudioCommand::Seek(position))
+            .seek(position)
             .map_err(|e| anyhow!("Failed to seek: {e}"))?;
         Ok(self.state.clone())
     }
 
     pub fn set_volume(&mut self, volume: f32) -> Result<PlaybackState> {
         self.driver
-            .send_command(AudioCommand::SetVolume(volume.clamp(0.0, 1.0)))
+            .set_volume(volume.clamp(0.0, 1.0))
             .map_err(|e| anyhow!("Failed to set volume: {e}"))?;
         Ok(self.state.clone())
     }
@@ -292,23 +292,23 @@ impl Playback {
             if let Some(track_index) = queue_tracks.iter().position(|t| t.id == track_id) {
                 // Move the selected track to the front of the queue
                 queue.move_item(track_index, 0);
-                
+
                 // If there's a current track, stop it and add it back to history
                 if let Some(current_track) = self.current_track.clone() {
                     self.history.push(current_track);
                     self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
                 }
-                
+
                 // Stop current playback
                 self.stop()?;
-                
+
                 // Play the selected track
                 self.play()?;
-                
+
                 self.event_sender
                     .send(PlaybackEvent::QueueChanged(self.get_queue()))
                     .ok();
-                
+
                 return Ok(self.state.clone());
             }
         }

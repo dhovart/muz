@@ -1,28 +1,25 @@
 module Command = {
-  type t = Play | Pause | Next | Previous | SetVolume(float) | Seek(float)
+  type t = Play | Pause | Next | Previous | SetVolume(float) | Seek(int)
 
   let toJsonPayload = (command: t) => {
-    let commandName = switch command {
-    | Play => Js.Json.string("Play")
-    | Pause => Js.Json.string("Pause")
-    | Next => Js.Json.string("Next")
-    | Previous => Js.Json.string("Previous")
-    | SetVolume(_) => Js.Json.string("SetVolume")
-    | Seek(_) => Js.Json.string("Seek")
+    let (commandName, extraFields) = switch command {
+    | Play => ("Play", [])
+    | Pause => ("Pause", [])
+    | Next => ("Next", [])
+    | Previous => ("Previous", [])
+    | SetVolume(vol) => ("SetVolume", [("volume", Js.Json.number(vol))])
+    | Seek(position) => {
+        Js.log2("Creating Seek command with position:", position)
+        ("Seek", [("seekPosition", Js.Json.number(Float.fromInt(position)))])
+      }
     }
 
-    let contents = switch command {
-    | SetVolume(vol) =>
-      Js.Json.object_(
-        Js.Dict.fromArray([("command", commandName), ("volume", Js.Json.number(vol))]),
-      )
-    | Seek(position) =>
-      Js.Json.object_(
-        Js.Dict.fromArray([("command", commandName), ("position", Js.Json.number(position))]),
-      )
-    | _ => Js.Json.object_(Js.Dict.fromArray([("command", commandName)]))
-    }
-
-    Js.Json.object_(Js.Dict.fromArray([("payload", contents)]))
+    let baseFields = [("command", Js.Json.string(commandName))]
+    let allFields = Array.concat(baseFields, extraFields)
+    let payload = Js.Json.object_(Js.Dict.fromArray(allFields))
+    let finalPayload = Js.Json.object_(Js.Dict.fromArray([("payload", payload)]))
+    
+    Js.log2("Final JSON payload:", finalPayload)
+    finalPayload
   }
 }

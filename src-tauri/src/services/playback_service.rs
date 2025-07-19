@@ -22,7 +22,9 @@ impl PlaybackService {
             "Next" => playback.next(),
             "Previous" => playback.previous(),
             "Seek" => {
+                println!("Seek payload: {:?}", payload);
                 let position = payload.seek_position.unwrap_or(0);
+                println!("Seek position received: {} ms", position);
                 playback.seek(Duration::from_millis(position))
             }
             "SetVolume" => {

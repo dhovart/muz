@@ -5,13 +5,18 @@ let getLibraryTracks = (): Promise.t<Js.Dict.t<array<Track.t>>> => {
   Tauri.invoke("get_library_tracks", ())
 }
 
-let controlPlayback = async (command: Command.t): State.t => {
-  let result = await Tauri.invoke("control_playback", Command.toJsonPayload(command))
+// Helper function to parse playback state from string result
+let parsePlaybackState = (result: string): State.t => {
   switch result {
   | "Playing" => State.Playing
   | "Paused" => State.Paused
   | _ => State.Stopped
   }
+}
+
+let controlPlayback = async (command: Command.t): State.t => {
+  let result = await Tauri.invoke("control_playback", Command.toJsonPayload(command))
+  parsePlaybackState(result)
 }
 
 type progressEvent = {position: float, spectrumData: array<float>}
@@ -24,11 +29,7 @@ let subscribeToProgress = (onProgress: progressEvent => unit): Promise.t<unit> =
 
 let selectTrackFromQueue = async (trackId: string): State.t => {
   let result = await Tauri.invoke("select_track_from_queue", {"trackId": trackId})
-  switch result {
-  | "Playing" => State.Playing
-  | "Paused" => State.Paused
-  | _ => State.Stopped
-  }
+  parsePlaybackState(result)
 }
 
 let playFromLibrary = async (
@@ -49,9 +50,5 @@ let playFromLibrary = async (
   }
 
   let result = await Tauri.invoke("play_from_library", payload)
-  switch result {
-  | "Playing" => State.Playing
-  | "Paused" => State.Paused
-  | _ => State.Stopped
-  }
+  parsePlaybackState(result)
 }
