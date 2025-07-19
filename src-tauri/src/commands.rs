@@ -1,7 +1,8 @@
-use std::time::Duration;
 use std::collections::HashMap;
 
 use crate::player::{playback::PlaybackState, track::Track};
+use crate::services::library_service::LibraryService;
+use crate::services::playback_service::PlaybackService;
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use tauri::{ipc::Channel, State};
@@ -35,31 +36,18 @@ pub fn control_playback(
     state: State<'_, AppState>,
     payload: ControlPlaybackPayload,
 ) -> Result<PlaybackState, PlaybackError> {
-    let mut playback = state.playback.lock().unwrap();
-
-    match payload.command.as_str() {
-        "Play" => playback.play().map_err(PlaybackError::from),
-        "Pause" => playback.pause().map_err(PlaybackError::from),
-        "Next" => playback.next().map_err(PlaybackError::from),
-        "Seek" => playback
-            .seek(Duration::from_millis(payload.seek_position.unwrap_or(0)))
-            .map_err(PlaybackError::from),
-        "Previous" => playback.previous().map_err(PlaybackError::from),
-        "SetVolume" => {
-            if let Some(volume) = payload.volume {
-                playback.set_volume(volume).map_err(PlaybackError::from)
-            } else {
-                Err(PlaybackError("Invalid payload".to_string()))
-            }
-        }
-        _ => Err(PlaybackError("Unknown action".to_string())),
-    }
+    state
+        .playback_service
+        .control_playback(payload)
+        .map_err(PlaybackError::from)
 }
 
 #[tauri::command]
 pub fn get_library_path(state: State<'_, AppState>) -> Result<String, String> {
-    let config = state.config.lock().map_err(|e| e.to_string())?;
-    Ok(config.library_path.to_string_lossy().to_string())
+    state
+        .library_service
+        .get_library_path()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -76,47 +64,59 @@ pub fn set_library_path(
         .map_err(|e| e.to_string())?;
     config.save(&app_handle).map_err(|e| e.to_string())?;
 
-    // Update library path and rescan
-    let mut library = state.library.lock().map_err(|e| e.to_string())?;
-    library.update(Some(new_path), None);
-    library.rescan();
+    state
+        .library_service
+        .set_library_path(new_path)
+        .map_err(|e| e.to_string())?;
 
-    // Update playback queue with new tracks
-    let mut playback = state.playback.lock().map_err(|e| e.to_string())?;
-    playback.clear_queue();
-    playback.enqueue_multiple(library.get_tracks());
+    let tracks = state
+        .library_service
+        .get_library_tracks()
+        .map_err(|e| e.to_string())?
+        .into_values()
+        .flatten()
+        .collect();
+
+    state
+        .playback_service
+        .clear_queue_and_enqueue(tracks)
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
 
 #[tauri::command]
 pub fn rescan_library(state: State<'_, AppState>) -> Result<(), String> {
-    let mut library = state.library.lock().map_err(|e| e.to_string())?;
-    library.rescan();
+    state
+        .library_service
+        .rescan_library()
+        .map_err(|e| e.to_string())?;
 
     // Update playback queue with rescanned tracks
-    let mut playback = state.playback.lock().map_err(|e| e.to_string())?;
-    playback.clear_queue();
-    playback.enqueue_multiple(library.get_tracks());
+    let tracks = state
+        .library_service
+        .get_library_tracks()
+        .map_err(|e| e.to_string())?
+        .into_values()
+        .flatten()
+        .collect();
+
+    state
+        .playback_service
+        .clear_queue_and_enqueue(tracks)
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_library_tracks(state: State<'_, AppState>) -> Result<HashMap<String, Vec<Track>>, String> {
-    let library = state.library.lock().map_err(|e| e.to_string())?;
-    let tracks = library.get_tracks();
-    
-    let mut grouped: HashMap<String, Vec<Track>> = HashMap::new();
-    for track in tracks {
-        let album = track.metadata
-            .as_ref()
-            .and_then(|m| m.album.clone())
-            .unwrap_or_else(|| "Unknown Album".to_string());
-        grouped.entry(album).or_insert_with(Vec::new).push(track);
-    }
-    
-    Ok(grouped)
+pub fn get_library_tracks(
+    state: State<'_, AppState>,
+) -> Result<HashMap<String, Vec<Track>>, String> {
+    state
+        .library_service
+        .get_library_tracks()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -124,9 +124,9 @@ pub fn select_track_from_queue(
     state: State<'_, AppState>,
     track_id: String,
 ) -> Result<PlaybackState, PlaybackError> {
-    let mut playback = state.playback.lock().unwrap();
-    playback
-        .select_track_from_queue(&track_id)
+    state
+        .playback_service
+        .select_from_queue(&track_id)
         .map_err(PlaybackError::from)
 }
 
@@ -134,18 +134,31 @@ pub fn select_track_from_queue(
 pub fn play_from_library(
     state: State<'_, AppState>,
     track_id: String,
+    album: Option<String>,
+    artist: Option<String>,
 ) -> Result<PlaybackState, PlaybackError> {
-    let mut playback = state.playback.lock().unwrap();
-    let track = state
-        .library
-        .lock()
-        .unwrap()
-        .get_track_by_id(&track_id)
-        .ok_or_else(|| PlaybackError("Track not found".to_string()))?;
-    playback.prepend(track);
-    if playback.state == PlaybackState::Playing || playback.state == PlaybackState::Paused {
-        playback.next().map_err(PlaybackError::from)
+    // If album and artist are provided, play the entire album
+    if let (Some(album_name), Some(artist_name)) = (album, artist) {
+        // Get album tracks using LibraryService
+        let album_tracks = state
+            .library_service
+            .get_tracks_by_album(&album_name, &artist_name)
+            .map_err(PlaybackError::from)?;
+
+        // Use playback service to play the album
+        state
+            .playback_service
+            .play_album_tracks(album_tracks, &track_id)
+            .map_err(PlaybackError::from)
     } else {
-        playback.play().map_err(PlaybackError::from)
+        // Original behavior: just play the single track using LibraryService
+        let track = state
+            .library_service
+            .get_track_by_id(&track_id)
+            .map_err(PlaybackError::from)?;
+        state
+            .playback_service
+            .play_single_track(track)
+            .map_err(PlaybackError::from)
     }
 }

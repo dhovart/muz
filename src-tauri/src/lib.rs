@@ -3,22 +3,24 @@ use std::sync::{Arc, Mutex};
 use crate::player::{
     library::Library, playback::Playback, playback_driver::DefaultPlaybackDriver, track::Track,
 };
+use crate::services::{playback_service::PlaybackService, library_service::LibraryService};
 use tauri::{ipc::Channel, Builder, Emitter, Manager};
 
 mod commands;
 mod config;
 mod events;
 mod player;
+mod services;
 
 use commands::*;
 use config::AppConfig;
 use events::*;
 
 pub struct AppState {
-    pub playback: Arc<Mutex<Playback>>,
+    pub playback_service: PlaybackService,
+    pub library_service: LibraryService,
     pub progress_channel: Arc<Mutex<Option<Channel<ProgressEvent>>>>,
     pub config: Arc<Mutex<AppConfig>>,
-    pub library: Arc<Mutex<Library>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -81,8 +83,13 @@ pub fn run() {
                 on_queue_changed,
             );
 
-            let tracks = library.get_tracks();
+            let library_arc = Arc::new(Mutex::new(library));
+            let tracks = library_arc.lock().unwrap().get_tracks();
             playback.lock().unwrap().enqueue_multiple(tracks.clone());
+
+            // Create services
+            let playback_service = PlaybackService::new(playback);
+            let library_service = LibraryService::new(library_arc);
 
             // Emit initial events
             let initial_track_event = TrackChangedEvent { track: None };
@@ -92,10 +99,10 @@ pub fn run() {
             let _ = app.emit("queue-changed", initial_queue_event);
 
             app.manage(AppState {
-                playback,
+                playback_service,
+                library_service,
                 progress_channel,
                 config: Arc::new(Mutex::new(config)),
-                library: Arc::new(Mutex::new(library)),
             });
             Ok(())
         })

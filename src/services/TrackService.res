@@ -31,8 +31,24 @@ let selectTrackFromQueue = async (trackId: string): State.t => {
   }
 }
 
-let playFromLibrary = async (trackId: string): State.t => {
-  let result = await Tauri.invoke("play_from_library", {"trackId": trackId})
+let playFromLibrary = async (
+  trackId: string,
+  ~album: option<string>,
+  ~artist: option<string>,
+  (),
+): State.t => {
+  let payload = Js.Dict.empty()
+  Js.Dict.set(payload, "trackId", trackId)
+  switch album {
+  | Some(albumName) => Js.Dict.set(payload, "album", albumName)
+  | None => ()
+  }
+  switch artist {
+  | Some(artistName) => Js.Dict.set(payload, "artist", artistName)
+  | None => ()
+  }
+
+  let result = await Tauri.invoke("play_from_library", payload)
   switch result {
   | "Playing" => State.Playing
   | "Paused" => State.Paused

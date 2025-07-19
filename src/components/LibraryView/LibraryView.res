@@ -24,8 +24,12 @@ let make = () => {
     ->ignore
   })
 
-  let handleTrackSelect = React.useCallback0((track: Track.t) => {
-    TrackService.playFromLibrary(track.id)->ignore
+  let handleTrackSelect = React.useCallback0((
+    track: Track.t,
+    album: option<string>,
+    artist: option<string>,
+  ) => {
+    TrackService.playFromLibrary(track.id, ~album, ~artist, ())->ignore
   })
 
   React.useEffect0(() => {
