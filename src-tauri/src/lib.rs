@@ -91,11 +91,9 @@ pub fn run() {
             let tracks = library_arc.lock().unwrap().get_tracks();
             playback.lock().unwrap().enqueue_multiple(tracks.clone());
 
-            // Create services
-            let playback_service = PlaybackService::new(playback);
+            let playback_service: PlaybackService = PlaybackService::new(playback);
             let library_service = LibraryService::new(library_arc);
 
-            // Emit initial events
             let initial_track_event = TrackChangedEvent { track: None };
             let _ = app.emit("track-changed", initial_track_event);
 
@@ -118,7 +116,7 @@ pub fn run() {
             get_library_path,
             set_library_path,
             rescan_library,
-            get_library_tracks,
+            get_albums_by_artist,
             select_track_from_queue,
             play_from_library
         ])

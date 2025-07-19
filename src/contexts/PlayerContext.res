@@ -1,4 +1,4 @@
-open TrackService
+open PlaybackService
 
 type playerAction =
   | SetCurrentTrack(option<Track.t>)
@@ -81,7 +81,7 @@ module PlayerProvider = {
           })
 
           // Subscribe to progress updates
-          let _ = await TrackService.subscribeToProgress(message => {
+          let _ = await PlaybackService.subscribeToProgress(message => {
             let position = message.position
             dispatch(SetPosition(position))
             dispatch(SetSpectrumData(message.spectrumData))

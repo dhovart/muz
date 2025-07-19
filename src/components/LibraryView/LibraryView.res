@@ -1,23 +1,20 @@
-open PlayerContext
 open LibraryViewStyles
 
 @react.component
 let make = () => {
-  let player = PlayerContext.usePlayer()
-
-  let (albumsMap, setAlbumsMap) = React.useState(_ => Js.Dict.empty())
+  let (albumsByArtist, setAlbumsByArtist) = React.useState(_ => Js.Dict.empty())
   let (loading, setLoading) = React.useState(_ => true)
 
   let loadTracks = React.useCallback0(() => {
     setLoading(_ => true)
-    TrackService.getLibraryTracks()
-    ->Promise.then(albumsMap => {
-      setAlbumsMap(_ => albumsMap)
+    LibraryService.getAlbumsByArtist()
+    ->Promise.then(albumsByArtist => {
+      setAlbumsByArtist(_ => albumsByArtist)
       setLoading(_ => false)
       Promise.resolve()
     })
     ->Promise.catch(error => {
-      Js.Console.error2("Failed to load library tracks:", error)
+      Js.Console.error2("Failed to load albums by artist:", error)
       setLoading(_ => false)
       Promise.resolve()
     })
@@ -29,7 +26,7 @@ let make = () => {
     album: option<string>,
     artist: option<string>,
   ) => {
-    TrackService.playFromLibrary(track.id, ~album, ~artist, ())->ignore
+    PlaybackService.playFromLibrary(track.id, ~album, ~artist, ())->ignore
   })
 
   React.useEffect0(() => {
@@ -45,6 +42,6 @@ let make = () => {
       ? <div>
           <Mui.CircularProgress />
         </div>
-      : <Albums albumsMap currentTrack=player.currentTrack onTrackSelect=handleTrackSelect />}
+      : <Albums albumsByArtist onTrackSelect=handleTrackSelect />}
   </div>
 }

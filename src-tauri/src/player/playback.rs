@@ -290,19 +290,14 @@ impl Playback {
         if let Some(queue) = &mut self.queue {
             let queue_tracks = queue.tracks();
             if let Some(track_index) = queue_tracks.iter().position(|t| t.id == track_id) {
-                // Move the selected track to the front of the queue
                 queue.move_item(track_index, 0);
 
-                // If there's a current track, stop it and add it back to history
                 if let Some(current_track) = self.current_track.clone() {
                     self.history.push(current_track);
                     self.event_sender.send(PlaybackEvent::HistoryUpdate)?;
                 }
 
-                // Stop current playback
                 self.stop()?;
-
-                // Play the selected track
                 self.play()?;
 
                 self.event_sender

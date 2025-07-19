@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
 use crate::player::{playback::PlaybackState, track::Track};
-use crate::services::library_service::LibraryService;
-use crate::services::playback_service::PlaybackService;
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use tauri::{ipc::Channel, State};
@@ -111,12 +109,12 @@ pub fn rescan_library(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_library_tracks(
+pub fn get_albums_by_artist(
     state: State<'_, AppState>,
-) -> Result<HashMap<String, Vec<Track>>, String> {
+) -> Result<HashMap<String, HashMap<String, Vec<Track>>>, String> {
     state
         .library_service
-        .get_library_tracks()
+        .get_albums_by_artist()
         .map_err(|e| e.to_string())
 }
 
@@ -138,21 +136,17 @@ pub fn play_from_library(
     album: Option<String>,
     artist: Option<String>,
 ) -> Result<PlaybackState, PlaybackError> {
-    // If album and artist are provided, play the entire album
     if let (Some(album_name), Some(artist_name)) = (album, artist) {
-        // Get album tracks using LibraryService
         let album_tracks = state
             .library_service
             .get_tracks_by_album(&album_name, &artist_name)
             .map_err(PlaybackError::from)?;
 
-        // Use playback service to play the album
         state
             .playback_service
             .play_album_tracks(album_tracks, &track_id)
             .map_err(PlaybackError::from)
     } else {
-        // Original behavior: just play the single track using LibraryService
         let track = state
             .library_service
             .get_track_by_id(&track_id)

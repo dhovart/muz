@@ -45,7 +45,7 @@ let queueItemHover = hoverColor
 let unpackHex = (color: CssJs.Types.Color.t) => {
   switch color {
   | #hex(value) => value
-  | _ => "000000" // fallback
+  | _ => ""
   }
 }
 

@@ -13,7 +13,7 @@ let make = (~isOpen: bool, ~onClose: unit => unit) => {
   let player = PlayerContext.usePlayer()
 
   let handleTrackSelect = React.useCallback0((track: Track.t) => {
-    TrackService.selectTrackFromQueue(track.id)->ignore
+    PlaybackService.selectTrackFromQueue(track.id)->ignore
   })
 
   let renderCurrentTrack = (track: Track.t) => {

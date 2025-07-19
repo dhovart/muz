@@ -28,7 +28,7 @@ let make = () => {
 
   let invokePlayerCommand = async command => {
     try {
-      let result = await TrackService.controlPlayback(command)
+      let result = await PlaybackService.controlPlayback(command)
       switch result {
       | Playing => player.dispatch(SetState(State.Playing))
       | Paused => player.dispatch(SetState(State.Paused))

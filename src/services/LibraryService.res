@@ -14,3 +14,7 @@ let rescanLibrary = (~onRescan: option<unit => unit>) => {
 
   Tauri.invoke("rescan_library", ())
 }
+
+let getAlbumsByArtist = (): Promise.t<Js.Dict.t<Js.Dict.t<array<Track.t>>>> => {
+  Tauri.invoke("get_albums_by_artist", ())
+}
