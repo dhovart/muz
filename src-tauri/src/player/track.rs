@@ -40,9 +40,14 @@ pub static SUPPORTED_EXTENSIONS: &[&str] = &[
 
 impl Track {
     pub fn new<P: Into<PathBuf> + AsRef<Path>>(path: P) -> Self {
-        let (total_frames, duration_ms, metadata) = Self::get_metadata(path.as_ref());
+        let (total_frames, duration_ms, mut metadata) = Self::get_metadata(path.as_ref());
         if total_frames.is_none() {
             eprintln!("Failed to get total frames for track: {:?}", path.as_ref());
+        }
+        if let Some(metadata) = metadata.as_mut() {
+            if metadata.title.is_none() {
+                metadata.title = Some(Self::default_title(path.as_ref()));
+            }
         }
         Self {
             id: Uuid::new_v4().to_string(),
