@@ -14,7 +14,8 @@ impl PlaybackService {
     }
 
     pub fn control_playback(&self, payload: ControlPlaybackPayload) -> Result<PlaybackState> {
-        let mut playback = self.playback.lock().unwrap();
+        let mut playback = self.playback.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock playback: {}", e))?;
 
         match payload.command.as_str() {
             "Play" => playback.play(),
@@ -39,7 +40,8 @@ impl PlaybackService {
     }
 
     pub fn play_single_track(&self, track: Track) -> Result<PlaybackState> {
-        let mut playback = self.playback.lock().unwrap();
+        let mut playback = self.playback.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock playback: {}", e))?;
 
         playback.prepend(track);
         if playback.state == PlaybackState::Playing || playback.state == PlaybackState::Paused {
@@ -54,7 +56,8 @@ impl PlaybackService {
         album_tracks: Vec<Track>,
         track_id: &str,
     ) -> Result<PlaybackState> {
-        let mut playback = self.playback.lock().unwrap();
+        let mut playback = self.playback.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock playback: {}", e))?;
 
         let selected_track_id = album_tracks
             .iter()
@@ -69,12 +72,14 @@ impl PlaybackService {
     }
 
     pub fn select_from_queue(&self, track_id: &str) -> Result<PlaybackState> {
-        let mut playback = self.playback.lock().unwrap();
+        let mut playback = self.playback.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock playback: {}", e))?;
         playback.select_track_from_queue(track_id)
     }
 
     pub fn clear_queue_and_enqueue(&self, tracks: Vec<Track>) -> Result<()> {
-        let mut playback = self.playback.lock().unwrap();
+        let mut playback = self.playback.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock playback: {}", e))?;
         playback.clear_queue();
         playback.enqueue_multiple(tracks);
         Ok(())

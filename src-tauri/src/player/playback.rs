@@ -323,9 +323,9 @@ impl Playback {
 impl Drop for Playback {
     fn drop(&mut self) {
         println!("Playback is being dropped, sending shutdown event");
-        self.event_sender
-            .send(PlaybackEvent::Shutdown)
-            .expect("Failed to send shutdown event");
+        if let Err(e) = self.event_sender.send(PlaybackEvent::Shutdown) {
+            eprintln!("Failed to send shutdown event during drop: {}", e);
+        }
     }
 }
 

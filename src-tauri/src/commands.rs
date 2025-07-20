@@ -26,26 +26,38 @@ impl PlaybackError {
 
 #[tauri::command]
 pub fn subscribe_to_progress(state: State<'_, AppState>, on_progress: Channel<ProgressEvent>) {
-    let mut channel_guard = state.progress_channel.lock().unwrap();
-    *channel_guard = Some(on_progress);
+    if let Ok(mut channel_guard) = state.progress_channel.lock() {
+        *channel_guard = Some(on_progress);
+    } else {
+        eprintln!("Failed to lock progress channel");
+    }
 }
 
 #[tauri::command]
 pub fn subscribe_to_spectrum(state: State<'_, AppState>, on_spectrum: Channel<SpectrumEvent>) {
-    let mut channel_guard = state.spectrum_channel.lock().unwrap();
-    *channel_guard = Some(on_spectrum);
+    if let Ok(mut channel_guard) = state.spectrum_channel.lock() {
+        *channel_guard = Some(on_spectrum);
+    } else {
+        eprintln!("Failed to lock spectrum channel");
+    }
 }
 
 #[tauri::command]
 pub fn unsubscribe_from_progress(state: State<'_, AppState>) {
-    let mut channel_guard = state.progress_channel.lock().unwrap();
-    *channel_guard = None;
+    if let Ok(mut channel_guard) = state.progress_channel.lock() {
+        *channel_guard = None;
+    } else {
+        eprintln!("Failed to lock progress channel");
+    }
 }
 
 #[tauri::command]
 pub fn unsubscribe_from_spectrum(state: State<'_, AppState>) {
-    let mut channel_guard = state.spectrum_channel.lock().unwrap();
-    *channel_guard = None;
+    if let Ok(mut channel_guard) = state.spectrum_channel.lock() {
+        *channel_guard = None;
+    } else {
+        eprintln!("Failed to lock spectrum channel");
+    }
 }
 
 #[tauri::command]

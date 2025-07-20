@@ -14,25 +14,29 @@ impl LibraryService {
     }
 
     pub fn library_path(&self) -> Result<String> {
-        let library = self.library.lock().unwrap();
+        let library = self.library.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock library: {}", e))?;
         Ok(library.path.to_string_lossy().to_string())
     }
 
     pub fn set_library_path(&self, path: PathBuf) -> Result<()> {
-        let mut library = self.library.lock().unwrap();
+        let mut library = self.library.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock library: {}", e))?;
         library.update(Some(path), None);
         library.rescan();
         Ok(())
     }
 
     pub fn rescan_library(&self) -> Result<()> {
-        let mut library = self.library.lock().unwrap();
+        let mut library = self.library.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock library: {}", e))?;
         library.rescan();
         Ok(())
     }
 
     pub fn library_tracks(&self) -> Result<HashMap<String, Vec<Track>>> {
-        let library = self.library.lock().unwrap();
+        let library = self.library.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock library: {}", e))?;
         let tracks = library.tracks();
 
         let mut grouped: HashMap<String, Vec<Track>> = HashMap::new();
@@ -49,7 +53,8 @@ impl LibraryService {
     }
 
     pub fn albums_by_artist(&self) -> Result<HashMap<String, HashMap<String, Vec<Track>>>> {
-        let library = self.library.lock().unwrap();
+        let library = self.library.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock library: {}", e))?;
         let tracks = library.tracks();
 
         let mut grouped: HashMap<String, HashMap<String, Vec<Track>>> = HashMap::new();
@@ -98,14 +103,16 @@ impl LibraryService {
     }
 
     pub fn track_by_id(&self, track_id: &str) -> Result<Track> {
-        let library = self.library.lock().unwrap();
+        let library = self.library.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock library: {}", e))?;
         library
             .track_by_id(track_id)
             .ok_or_else(|| anyhow::anyhow!("Track not found"))
     }
 
     pub fn tracks_by_album(&self, album_name: &str, artist_name: &str) -> Result<Vec<Track>> {
-        let library = self.library.lock().unwrap();
+        let library = self.library.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock library: {}", e))?;
         let mut tracks: Vec<Track> = library
             .tracks()
             .iter()

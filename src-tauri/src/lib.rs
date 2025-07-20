@@ -101,8 +101,18 @@ pub fn run() {
             );
 
             let library_arc = Arc::new(Mutex::new(library));
-            let tracks = library_arc.lock().unwrap().tracks_cloned();
-            playback.lock().unwrap().enqueue_multiple(tracks.clone());
+            let tracks = match library_arc.lock() {
+                Ok(library) => library.tracks_cloned(),
+                Err(e) => {
+                    eprintln!("Failed to lock library: {}", e);
+                    Vec::new()
+                }
+            };
+            if let Ok(mut playback_guard) = playback.lock() {
+                playback_guard.enqueue_multiple(tracks.clone());
+            } else {
+                eprintln!("Failed to lock playback");
+            }
 
             let playback_service: PlaybackService = PlaybackService::new(playback);
             let library_service = LibraryService::new(library_arc);
