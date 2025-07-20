@@ -1,8 +1,8 @@
-use crate::player::{track::Track, library::Library};
+use crate::player::{library::Library, track::Track};
 use anyhow::Result;
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 pub struct LibraryService {
     library: Arc<Mutex<Library>>,
@@ -34,37 +34,40 @@ impl LibraryService {
     pub fn get_library_tracks(&self) -> Result<HashMap<String, Vec<Track>>> {
         let library = self.library.lock().unwrap();
         let tracks = library.get_tracks();
-        
+
         let mut grouped: HashMap<String, Vec<Track>> = HashMap::new();
         for track in tracks {
-            let album = track.metadata
+            let album = track
+                .metadata
                 .as_ref()
                 .and_then(|m| m.album.clone())
                 .unwrap_or_else(|| "Unknown Album".to_string());
             grouped.entry(album).or_insert_with(Vec::new).push(track);
         }
-        
+
         Ok(grouped)
     }
 
     pub fn get_albums_by_artist(&self) -> Result<HashMap<String, HashMap<String, Vec<Track>>>> {
         let library = self.library.lock().unwrap();
         let tracks = library.get_tracks();
-        
+
         let mut grouped: HashMap<String, HashMap<String, Vec<Track>>> = HashMap::new();
-        
+
         for track in tracks {
-            let artist = track.metadata
+            let artist = track
+                .metadata
                 .as_ref()
                 .and_then(|m| m.album_artist.as_ref().or(m.artist.as_ref()))
                 .cloned()
                 .unwrap_or_else(|| "Unknown Artist".to_string());
-                
-            let album = track.metadata
+
+            let album = track
+                .metadata
                 .as_ref()
                 .and_then(|m| m.album.clone())
                 .unwrap_or_else(|| "Unknown Album".to_string());
-            
+
             grouped
                 .entry(artist)
                 .or_insert_with(HashMap::new)
@@ -72,22 +75,25 @@ impl LibraryService {
                 .or_insert_with(Vec::new)
                 .push(track);
         }
-        
-        // Sort tracks within each album by track number
+
         for artist_albums in grouped.values_mut() {
             for album_tracks in artist_albums.values_mut() {
                 album_tracks.sort_by(|a, b| {
-                    let a_track_num = a.metadata.as_ref()
+                    let a_track_num = a
+                        .metadata
+                        .as_ref()
                         .and_then(|m| m.track_number)
                         .unwrap_or(0);
-                    let b_track_num = b.metadata.as_ref()
+                    let b_track_num = b
+                        .metadata
+                        .as_ref()
                         .and_then(|m| m.track_number)
                         .unwrap_or(0);
                     a_track_num.cmp(&b_track_num)
                 });
             }
         }
-        
+
         Ok(grouped)
     }
 
@@ -100,30 +106,46 @@ impl LibraryService {
 
     pub fn get_tracks_by_album(&self, album_name: &str, artist_name: &str) -> Result<Vec<Track>> {
         let library = self.library.lock().unwrap();
-        let tracks: Vec<Track> = library
+        let mut tracks: Vec<Track> = library
             .get_tracks()
             .into_iter()
             .filter(|track| {
                 let unknown_album = "Unknown Album".to_string();
                 let unknown_artist = "Unknown Artist".to_string();
-                
-                let track_album = track.metadata
+
+                let track_album = track
+                    .metadata
                     .as_ref()
                     .and_then(|m| m.album.as_ref())
                     .unwrap_or(&unknown_album);
-                let track_artist = track.metadata
+                let track_artist = track
+                    .metadata
                     .as_ref()
                     .and_then(|m| m.album_artist.as_ref().or(m.artist.as_ref()))
                     .unwrap_or(&unknown_artist);
-                
+
                 track_album == album_name && track_artist == artist_name
             })
             .collect();
-        
+
         if tracks.is_empty() {
             return Err(anyhow::anyhow!("Album not found"));
         }
-        
+
+        tracks.sort_by(|a, b| {
+            let a_track_num = a
+                .metadata
+                .as_ref()
+                .and_then(|m| m.track_number)
+                .unwrap_or(0);
+            let b_track_num = b
+                .metadata
+                .as_ref()
+                .and_then(|m| m.track_number)
+                .unwrap_or(0);
+            a_track_num.cmp(&b_track_num)
+        });
+
         Ok(tracks)
     }
 }
