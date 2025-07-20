@@ -63,7 +63,7 @@ pub fn control_playback(
 pub fn get_library_path(state: State<'_, AppState>) -> Result<String, String> {
     state
         .library_service
-        .get_library_path()
+        .library_path()
         .map_err(|e| e.to_string())
 }
 
@@ -88,7 +88,7 @@ pub fn set_library_path(
 
     let tracks = state
         .library_service
-        .get_library_tracks()
+        .library_tracks()
         .map_err(|e| e.to_string())?
         .into_values()
         .flatten()
@@ -112,7 +112,7 @@ pub fn rescan_library(state: State<'_, AppState>) -> Result<(), String> {
     // Update playback queue with rescanned tracks
     let tracks = state
         .library_service
-        .get_library_tracks()
+        .library_tracks()
         .map_err(|e| e.to_string())?
         .into_values()
         .flatten()
@@ -132,7 +132,7 @@ pub fn get_albums_by_artist(
 ) -> Result<HashMap<String, HashMap<String, Vec<Track>>>, String> {
     state
         .library_service
-        .get_albums_by_artist()
+        .albums_by_artist()
         .map_err(|e| e.to_string())
 }
 
@@ -157,7 +157,7 @@ pub fn play_from_library(
     if let (Some(album_name), Some(artist_name)) = (album, artist) {
         let album_tracks = state
             .library_service
-            .get_tracks_by_album(&album_name, &artist_name)
+            .tracks_by_album(&album_name, &artist_name)
             .map_err(PlaybackError::from)?;
 
         state
@@ -167,7 +167,7 @@ pub fn play_from_library(
     } else {
         let track = state
             .library_service
-            .get_track_by_id(&track_id)
+            .track_by_id(&track_id)
             .map_err(PlaybackError::from)?;
         state
             .playback_service

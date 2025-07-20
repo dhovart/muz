@@ -68,8 +68,12 @@ impl Queue {
         }
     }
 
-    pub fn tracks(&self) -> Vec<Track> {
+    pub fn tracks_cloned(&self) -> Vec<Track> {
         self.tracks.clone()
+    }
+
+    pub fn tracks(&self) -> &[Track] {
+        &self.tracks
     }
 }
 

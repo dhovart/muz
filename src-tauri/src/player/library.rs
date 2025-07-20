@@ -57,11 +57,15 @@ impl Library {
         todo!("Implement library deletion logic");
     }
 
-    pub fn get_tracks(&self) -> Vec<Track> {
+    pub fn tracks_cloned(&self) -> Vec<Track> {
         self.tracks.clone()
     }
 
-    pub fn get_track_by_id(&self, track_id: &str) -> Option<Track> {
+    pub fn tracks(&self) -> &[Track] {
+        &self.tracks
+    }
+
+    pub fn track_by_id(&self, track_id: &str) -> Option<Track> {
         self.tracks
             .iter()
             .find(|track| track.id == track_id)

@@ -101,7 +101,7 @@ pub fn run() {
             );
 
             let library_arc = Arc::new(Mutex::new(library));
-            let tracks = library_arc.lock().unwrap().get_tracks();
+            let tracks = library_arc.lock().unwrap().tracks_cloned();
             playback.lock().unwrap().enqueue_multiple(tracks.clone());
 
             let playback_service: PlaybackService = PlaybackService::new(playback);

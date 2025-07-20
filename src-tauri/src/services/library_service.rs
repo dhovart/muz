@@ -13,7 +13,7 @@ impl LibraryService {
         Self { library }
     }
 
-    pub fn get_library_path(&self) -> Result<String> {
+    pub fn library_path(&self) -> Result<String> {
         let library = self.library.lock().unwrap();
         Ok(library.path.to_string_lossy().to_string())
     }
@@ -31,9 +31,9 @@ impl LibraryService {
         Ok(())
     }
 
-    pub fn get_library_tracks(&self) -> Result<HashMap<String, Vec<Track>>> {
+    pub fn library_tracks(&self) -> Result<HashMap<String, Vec<Track>>> {
         let library = self.library.lock().unwrap();
-        let tracks = library.get_tracks();
+        let tracks = library.tracks();
 
         let mut grouped: HashMap<String, Vec<Track>> = HashMap::new();
         for track in tracks {
@@ -42,15 +42,15 @@ impl LibraryService {
                 .as_ref()
                 .and_then(|m| m.album.clone())
                 .unwrap_or_else(|| "Unknown Album".to_string());
-            grouped.entry(album).or_insert_with(Vec::new).push(track);
+            grouped.entry(album).or_insert_with(Vec::new).push(track.clone());
         }
 
         Ok(grouped)
     }
 
-    pub fn get_albums_by_artist(&self) -> Result<HashMap<String, HashMap<String, Vec<Track>>>> {
+    pub fn albums_by_artist(&self) -> Result<HashMap<String, HashMap<String, Vec<Track>>>> {
         let library = self.library.lock().unwrap();
-        let tracks = library.get_tracks();
+        let tracks = library.tracks();
 
         let mut grouped: HashMap<String, HashMap<String, Vec<Track>>> = HashMap::new();
 
@@ -73,7 +73,7 @@ impl LibraryService {
                 .or_insert_with(HashMap::new)
                 .entry(album)
                 .or_insert_with(Vec::new)
-                .push(track);
+                .push(track.clone());
         }
 
         for artist_albums in grouped.values_mut() {
@@ -97,18 +97,19 @@ impl LibraryService {
         Ok(grouped)
     }
 
-    pub fn get_track_by_id(&self, track_id: &str) -> Result<Track> {
+    pub fn track_by_id(&self, track_id: &str) -> Result<Track> {
         let library = self.library.lock().unwrap();
         library
-            .get_track_by_id(track_id)
+            .track_by_id(track_id)
             .ok_or_else(|| anyhow::anyhow!("Track not found"))
     }
 
-    pub fn get_tracks_by_album(&self, album_name: &str, artist_name: &str) -> Result<Vec<Track>> {
+    pub fn tracks_by_album(&self, album_name: &str, artist_name: &str) -> Result<Vec<Track>> {
         let library = self.library.lock().unwrap();
         let mut tracks: Vec<Track> = library
-            .get_tracks()
-            .into_iter()
+            .tracks()
+            .iter()
+            .cloned()
             .filter(|track| {
                 let unknown_album = "Unknown Album".to_string();
                 let unknown_artist = "Unknown Artist".to_string();

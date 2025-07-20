@@ -169,11 +169,11 @@ fn test_previous_prepends_current_track_to_queue() {
     playback.enqueue(track2.clone());
     let _ = playback.play();
     let _ = playback.next();
-    let initial_queue_length = playback.get_queue().len();
+    let initial_queue_length = playback.queue().len();
     let _ = playback.previous();
-    let final_queue_length = playback.get_queue().len();
+    let final_queue_length = playback.queue().len();
     assert_eq!(final_queue_length, initial_queue_length + 1);
-    let queue_tracks = playback.get_queue();
+    let queue_tracks = playback.queue();
     assert_eq!(queue_tracks.first(), Some(&track2));
     assert_eq!(playback.current_track(), Some(&track1));
 }
@@ -190,7 +190,7 @@ fn test_previous_with_empty_queue_prepends_current_track() {
     let _ = playback.next();
     playback.clear_queue();
     let _ = playback.previous();
-    let queue_tracks = playback.get_queue();
+    let queue_tracks = playback.queue();
     assert_eq!(queue_tracks.len(), 1);
     assert_eq!(queue_tracks[0], track2);
     assert_eq!(playback.current_track(), Some(&track1));
@@ -209,7 +209,7 @@ fn test_previous_with_no_current_track_does_not_prepend_to_queue() {
     playback.stop();
     let _ = playback.previous();
 
-    let queue_tracks = playback.get_queue();
+    let queue_tracks = playback.queue();
 
     assert_eq!(queue_tracks.len(), 0);
 }
@@ -227,11 +227,11 @@ fn test_multiple_previous_calls_prepend_correctly() {
     let _ = playback.play();
     let _ = playback.next();
     let _ = playback.next();
-    let initial_queue_length = playback.get_queue().len();
+    let initial_queue_length = playback.queue().len();
     let _ = playback.previous();
     let _ = playback.previous();
-    let final_queue_length = playback.get_queue().len();
-    let queue_tracks = playback.get_queue();
+    let final_queue_length = playback.queue().len();
+    let queue_tracks = playback.queue();
     assert_eq!(final_queue_length, initial_queue_length + 2);
     assert_eq!(queue_tracks[0], track2);
     assert_eq!(queue_tracks[1], track3);
@@ -266,7 +266,7 @@ fn test_select_track_from_queue_success() {
     assert_eq!(playback.history[0], track1);
 
     // track3 should be removed from queue and track2 should be first
-    let queue = playback.get_queue();
+    let queue = playback.queue();
     assert_eq!(queue.len(), 1);
     assert_eq!(queue[0], track2);
 }
@@ -293,7 +293,7 @@ fn test_select_track_from_queue_with_no_current_track() {
     assert_eq!(playback.history.len(), 0);
 
     // track1 should be the only track left in queue
-    let queue = playback.get_queue();
+    let queue = playback.queue();
     assert_eq!(queue.len(), 1);
     assert_eq!(queue[0], track1);
 }
@@ -320,7 +320,7 @@ fn test_select_track_from_queue_moves_to_front() {
     assert_eq!(playback.current_track(), Some(&track3));
 
     // Queue should have track3 removed and other tracks in original order
-    let queue = playback.get_queue();
+    let queue = playback.queue();
     assert_eq!(queue.len(), 3);
     assert_eq!(queue[0], track1);
     assert_eq!(queue[1], track2);
@@ -389,7 +389,7 @@ fn test_select_track_from_queue_first_track() {
     assert_eq!(playback.history[0], track1);
 
     // Queue should have track3 only
-    let queue = playback.get_queue();
+    let queue = playback.queue();
     assert_eq!(queue.len(), 1);
     assert_eq!(queue[0], track3);
 }

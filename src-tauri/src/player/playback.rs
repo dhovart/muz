@@ -129,7 +129,7 @@ impl Playback {
             self.queue = Some(queue);
         }
         self.event_sender
-            .send(PlaybackEvent::QueueChanged(self.get_queue()))
+            .send(PlaybackEvent::QueueChanged(self.queue()))
             .ok();
     }
 
@@ -149,7 +149,7 @@ impl Playback {
             self.enqueue(track);
         }
         self.event_sender
-            .send(PlaybackEvent::QueueChanged(self.get_queue()))
+            .send(PlaybackEvent::QueueChanged(self.queue()))
             .ok();
     }
 
@@ -158,7 +158,7 @@ impl Playback {
             queue.clear();
         }
         self.event_sender
-            .send(PlaybackEvent::QueueChanged(self.get_queue()))
+            .send(PlaybackEvent::QueueChanged(self.queue()))
             .ok();
     }
 
@@ -176,7 +176,7 @@ impl Playback {
                         .send(PlaybackEvent::TrackChanged(self.current_track.clone()))
                         .ok();
                     self.event_sender
-                        .send(PlaybackEvent::QueueChanged(self.get_queue()))
+                        .send(PlaybackEvent::QueueChanged(self.queue()))
                         .ok();
                 }
             };
@@ -210,7 +210,7 @@ impl Playback {
         if let Some(current_track) = self.current_track.clone() {
             self.prepend(current_track);
             self.event_sender
-                .send(PlaybackEvent::QueueChanged(self.get_queue()))
+                .send(PlaybackEvent::QueueChanged(self.queue()))
                 .ok();
         }
 
@@ -284,14 +284,14 @@ impl Playback {
         Ok(self.state.clone())
     }
 
-    pub fn get_queue(&self) -> Vec<Track> {
+    pub fn queue(&self) -> Vec<Track> {
         self.queue
             .as_ref()
-            .map(|q| q.tracks())
+            .map(|q| q.tracks_cloned())
             .unwrap_or_else(Vec::new)
     }
 
-    pub fn get_current_track(&self) -> Option<Track> {
+    pub fn current_track_cloned(&self) -> Option<Track> {
         self.current_track.clone()
     }
 
@@ -310,7 +310,7 @@ impl Playback {
                 self.play()?;
 
                 self.event_sender
-                    .send(PlaybackEvent::QueueChanged(self.get_queue()))
+                    .send(PlaybackEvent::QueueChanged(self.queue()))
                     .ok();
 
                 return Ok(self.state.clone());
