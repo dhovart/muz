@@ -30,6 +30,14 @@ let subscribeToSpectrum = (onSpectrum: spectrumEvent => unit): Promise.t<unit> =
   Tauri.invoke("subscribe_to_spectrum", {"onSpectrum": channel})
 }
 
+let unsubscribeFromProgress = (): Promise.t<unit> => {
+  Tauri.invoke("unsubscribe_from_progress", ())
+}
+
+let unsubscribeFromSpectrum = (): Promise.t<unit> => {
+  Tauri.invoke("unsubscribe_from_spectrum", ())
+}
+
 let selectTrackFromQueue = async (trackId: string): State.t => {
   let result = await Tauri.invoke("select_track_from_queue", {"trackId": trackId})
   parsePlaybackState(result)

@@ -75,4 +75,9 @@ impl PlaybackService {
         playback.enqueue_multiple(tracks);
         Ok(())
     }
+
+    pub fn set_spectrum_computation(&self, should_compute: bool) -> Result<()> {
+        let mut playback = self.playback.lock().unwrap();
+        playback.set_spectrum_computation(should_compute)
+    }
 }

@@ -34,6 +34,22 @@ pub fn subscribe_to_progress(state: State<'_, AppState>, on_progress: Channel<Pr
 pub fn subscribe_to_spectrum(state: State<'_, AppState>, on_spectrum: Channel<SpectrumEvent>) {
     let mut channel_guard = state.spectrum_channel.lock().unwrap();
     *channel_guard = Some(on_spectrum);
+    
+    let _ = state.playback_service.set_spectrum_computation(true);
+}
+
+#[tauri::command]
+pub fn unsubscribe_from_progress(state: State<'_, AppState>) {
+    let mut channel_guard = state.progress_channel.lock().unwrap();
+    *channel_guard = None;
+}
+
+#[tauri::command]
+pub fn unsubscribe_from_spectrum(state: State<'_, AppState>) {
+    let mut channel_guard = state.spectrum_channel.lock().unwrap();
+    *channel_guard = None;
+    
+    let _ = state.playback_service.set_spectrum_computation(false);
 }
 
 #[tauri::command]

@@ -7,6 +7,7 @@ let useSpectrumData = () => {
     let subscription = async () => {
       try {
         let _ = await PlaybackService.subscribeToSpectrum(message => {
+          print_endline("Received spectrum data update")
           setSpectrumData(_ => message.spectrumData)
         })
       } catch {
@@ -16,7 +17,11 @@ let useSpectrumData = () => {
 
     subscription()->ignore
 
-    None // FIXME how to unsubscribe from a tauri channel?
+    Some(
+      () => {
+        PlaybackService.unsubscribeFromSpectrum()->ignore
+      },
+    )
   }, [])
 
   spectrumData

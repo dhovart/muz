@@ -24,6 +24,7 @@ pub mod awedio_impl {
         Clear,
         SetVolume(f32),
         Seek(Duration),
+        SetSpectrumComputation(bool),
         Exit,
     }
 
@@ -50,13 +51,15 @@ pub mod awedio_impl {
                 let mut current_playback_sender: Option<Sender<PlaybackEvent>> = None;
                 let mut current_position_ms: u64 = 0;
                 let mut _current_sound: Option<Box<dyn Sound>> = None;
+                let mut should_compute_spectrum = true;
 
                 let start_playback = |track: &Track,
                                       playback_sender: &Sender<PlaybackEvent>,
                                       seek_duration: Option<Duration>,
                                       manager: &mut Manager,
                                       controller: &mut Option<SoundController>,
-                                      volume: f32|
+                                      volume: f32,
+                                      should_compute_spectrum: bool|
                  -> Result<(), Error> {
                     let progress_sender = playback_sender.clone();
 
@@ -77,16 +80,17 @@ pub mod awedio_impl {
                     };
 
                     let progress_sender_clone = progress_sender.clone();
-                    let sound = WithProgressAndSpectrum::new(
+                    let mut sound = WithProgressAndSpectrum::new(
                         sound,
                         track.total_frames,
                         samples_played,
                         Box::new(move |progress, frames_played, spectrum_data| {
                             let _ = progress_sender
                                 .send(PlaybackEvent::Progress(progress, frames_played));
-                            let _ = progress_sender_clone
-                                .send(PlaybackEvent::Spectrum(spectrum_data));
+                            let _ =
+                                progress_sender_clone.send(PlaybackEvent::Spectrum(spectrum_data));
                         }),
+                        should_compute_spectrum,
                     );
 
                     let (sound, ctrl) = sound.controllable();
@@ -120,6 +124,7 @@ pub mod awedio_impl {
                                 &mut manager,
                                 &mut controller,
                                 volume,
+                                should_compute_spectrum,
                             )
                             .ok();
                         }
@@ -166,6 +171,7 @@ pub mod awedio_impl {
                                     &mut manager,
                                     &mut controller,
                                     volume,
+                                    should_compute_spectrum,
                                 )
                                 .ok();
                             }
@@ -174,6 +180,9 @@ pub mod awedio_impl {
                             controller = None;
                             _current_sound = None;
                             manager.clear();
+                        }
+                        AudioCommand::SetSpectrumComputation(should_compute) => {
+                            should_compute_spectrum = should_compute;
                         }
                         AudioCommand::Exit => break,
                     }
@@ -221,6 +230,12 @@ pub mod awedio_impl {
                 .send(AudioCommand::Seek(position))
                 .map_err(|e| anyhow!("Failed to send seek command: {}", e))
         }
+
+        fn set_spectrum_computation(&mut self, should_compute: bool) -> Result<()> {
+            self.command_sender
+                .send(AudioCommand::SetSpectrumComputation(should_compute))
+                .map_err(|e| anyhow!("Failed to send spectrum computation command: {}", e))
+        }
     }
 
     impl Drop for AwedioPlaybackDriver {
@@ -250,6 +265,7 @@ pub mod awedio_impl {
             batch_size: usize,
             cached_spectrum: Vec<f32>,
             last_update_time: std::time::Instant,
+            should_compute_spectrum: bool,
         }
 
         impl<S: Sound> WithProgressAndSpectrum<S> {
@@ -258,6 +274,7 @@ pub mod awedio_impl {
                 total_frames: u64,
                 samples_offset: u64,
                 on_update: Box<dyn Fn(f64, u64, Vec<f32>) + Send>,
+                should_compute_spectrum: bool,
             ) -> Self {
                 let sample_rate = inner.sample_rate() as f32;
                 let spectrum_analyzer =
@@ -273,7 +290,12 @@ pub mod awedio_impl {
                     batch_size: 512,
                     cached_spectrum: Vec::new(),
                     last_update_time: std::time::Instant::now(),
+                    should_compute_spectrum,
                 }
+            }
+
+            pub fn should_compute_spectrum(&mut self, should_compute: bool) {
+                self.should_compute_spectrum = should_compute;
             }
         }
 
@@ -309,8 +331,6 @@ pub mod awedio_impl {
                             NextSample::MetadataChanged => 0.0,
                         };
 
-                        self.sample_buffer.push(sample_f32);
-
                         let total_samples = self.total_frames * self.inner.channel_count() as u64;
                         let frames_played = self.samples_played / self.inner.channel_count() as u64;
                         let percent_completed = if total_samples > 0 {
@@ -320,12 +340,16 @@ pub mod awedio_impl {
                         };
                         let percent_completed = (percent_completed * 1000.0).round() / 1000.0;
 
-                        if self.sample_buffer.len() >= self.batch_size {
-                            if let Ok(mut analyzer) = self.spectrum_analyzer.lock() {
-                                analyzer.add_samples(&self.sample_buffer);
-                                self.cached_spectrum = analyzer.get_spectrum();
+                        if self.should_compute_spectrum {
+                            self.sample_buffer.push(sample_f32);
+
+                            if self.sample_buffer.len() >= self.batch_size {
+                                if let Ok(mut analyzer) = self.spectrum_analyzer.lock() {
+                                    analyzer.add_samples(&self.sample_buffer);
+                                    self.cached_spectrum = analyzer.get_spectrum();
+                                }
+                                self.sample_buffer.clear();
                             }
-                            self.sample_buffer.clear();
                         }
 
                         let now = std::time::Instant::now();
@@ -334,11 +358,12 @@ pub mod awedio_impl {
 
                         if should_update {
                             self.last_update_time = now;
-                            (self.on_update)(
-                                percent_completed,
-                                frames_played,
-                                self.cached_spectrum.clone(),
-                            );
+                            let spectrum_data = if self.should_compute_spectrum {
+                                self.cached_spectrum.clone()
+                            } else {
+                                Vec::new() // Send empty spectrum when not computing
+                            };
+                            (self.on_update)(percent_completed, frames_played, spectrum_data);
                         }
 
                         Ok(sample)

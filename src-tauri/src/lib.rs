@@ -128,6 +128,8 @@ pub fn run() {
             control_playback,
             subscribe_to_progress,
             subscribe_to_spectrum,
+            unsubscribe_from_progress,
+            unsubscribe_from_spectrum,
             get_library_path,
             set_library_path,
             rescan_library,

@@ -18,7 +18,9 @@ let useProgressData = () => {
 
     subscription()->ignore
 
-    None // FIXME how to unsubscribe from a tauri channel?
+    Some(() => {
+      PlaybackService.unsubscribeFromProgress()->ignore
+    })
   }, [])
 
   (position, framesPlayed)

@@ -19,6 +19,7 @@ pub mod rodio_impl {
         Clear,
         SetVolume(f32),
         Seek(Duration),
+        SetSpectrumComputation(bool),
         Exit,
     }
 
@@ -39,6 +40,7 @@ pub mod rodio_impl {
                 let mut volume = volume.clamp(0.0, 1.0);
                 let mut current_track: Option<Track> = None;
                 let mut current_progress_sender: Option<Sender<PlaybackEvent>> = None;
+                let mut should_compute_spectrum = true;
 
                 while let Ok(cmd) = command_receiver.recv() {
                     match cmd {
@@ -58,6 +60,7 @@ pub mod rodio_impl {
                                 track.total_frames,
                                 0,
                                 progress_sender.clone(),
+                                should_compute_spectrum,
                             );
                             sink_new.append(progress_source);
                             current_track = Some(track);
@@ -115,12 +118,14 @@ pub mod rodio_impl {
                                 let seek_offset_samples =
                                     (position.as_secs_f64() * sample_rate as f64) as u64
                                         * channel_count;
-                                let progress_source = ProgressAndSpectrumSource::new(
+                                let mut progress_source = ProgressAndSpectrumSource::new(
                                     source.skip_duration(position),
                                     track.total_frames,
                                     seek_offset_samples,
                                     progress_sender.clone(),
+                                    should_compute_spectrum,
                                 );
+
                                 sink_new.append(progress_source);
                                 sink = Some(sink_new);
                                 let completion_sender = progress_sender;
@@ -134,6 +139,9 @@ pub mod rodio_impl {
                                     thread::sleep(Duration::from_millis(100));
                                 });
                             }
+                        }
+                        AudioCommand::SetSpectrumComputation(should_compute) => {
+                            should_compute_spectrum = should_compute;
                         }
                         AudioCommand::Exit => break,
                     }
@@ -179,6 +187,12 @@ pub mod rodio_impl {
                 .send(AudioCommand::Seek(position))
                 .map_err(|e| anyhow!("Failed to send seek command: {}", e))
         }
+
+        fn set_spectrum_computation(&mut self, should_compute: bool) -> Result<()> {
+            self.command_sender
+                .send(AudioCommand::SetSpectrumComputation(should_compute))
+                .map_err(|e| anyhow!("Failed to send spectrum computation command: {}", e))
+        }
     }
     impl Drop for RodioPlaybackDriver {
         fn drop(&mut self) {
@@ -198,6 +212,7 @@ pub mod rodio_impl {
         last_update_time: Instant,
         sample_rate: u32,
         channels: u16,
+        should_compute_spectrum: bool,
     }
 
     impl<S: Source<Item = i16>> ProgressAndSpectrumSource<S> {
@@ -206,6 +221,7 @@ pub mod rodio_impl {
             total_frames: u64,
             samples_offset: u64,
             playback_sender: Sender<PlaybackEvent>,
+            should_compute_spectrum: bool,
         ) -> Self {
             let sample_rate = inner.sample_rate();
             let channels = inner.channels();
@@ -224,6 +240,7 @@ pub mod rodio_impl {
                 last_update_time: Instant::now(),
                 sample_rate,
                 channels,
+                should_compute_spectrum,
             }
         }
     }
@@ -235,10 +252,6 @@ pub mod rodio_impl {
             if let Some(sample) = self.inner.next() {
                 self.samples_played += 1;
 
-                // Convert i16 to f32 for spectrum analysis
-                let sample_f32 = sample as f32 / i16::MAX as f32;
-                self.sample_buffer.push(sample_f32);
-
                 let total_samples = self.total_frames * self.channels as u64;
                 let frames_played = self.samples_played / self.channels as u64;
                 let percent_completed = if total_samples > 0 {
@@ -248,12 +261,18 @@ pub mod rodio_impl {
                 };
                 let percent_completed = (percent_completed * 1000.0).round() / 1000.0;
 
-                if self.sample_buffer.len() >= self.batch_size {
-                    if let Ok(mut analyzer) = self.spectrum_analyzer.lock() {
-                        analyzer.add_samples(&self.sample_buffer);
-                        self.cached_spectrum = analyzer.get_spectrum();
+                if self.should_compute_spectrum {
+                    // Convert i16 to f32 for spectrum analysis
+                    let sample_f32 = sample as f32 / i16::MAX as f32;
+                    self.sample_buffer.push(sample_f32);
+
+                    if self.sample_buffer.len() >= self.batch_size {
+                        if let Ok(mut analyzer) = self.spectrum_analyzer.lock() {
+                            analyzer.add_samples(&self.sample_buffer);
+                            self.cached_spectrum = analyzer.get_spectrum();
+                        }
+                        self.sample_buffer.clear();
                     }
-                    self.sample_buffer.clear();
                 }
 
                 let now = Instant::now();
@@ -261,13 +280,17 @@ pub mod rodio_impl {
 
                 if should_update {
                     self.last_update_time = now;
-                    let _ = self.playback_sender.send(PlaybackEvent::Progress(
-                        percent_completed,
-                        frames_played,
-                    ));
-                    let _ = self.playback_sender.send(PlaybackEvent::Spectrum(
-                        self.cached_spectrum.clone(),
-                    ));
+                    let _ = self
+                        .playback_sender
+                        .send(PlaybackEvent::Progress(percent_completed, frames_played));
+                    let spectrum_data = if self.should_compute_spectrum {
+                        self.cached_spectrum.clone()
+                    } else {
+                        Vec::new() // Send empty spectrum when not computing
+                    };
+                    let _ = self
+                        .playback_sender
+                        .send(PlaybackEvent::Spectrum(spectrum_data));
                 }
 
                 Some(sample)
@@ -294,7 +317,7 @@ pub mod rodio_impl {
             self.inner.total_duration()
         }
     }
-} // end rodio_impl module
+}
 
 #[cfg(feature = "rodio-driver")]
 pub use rodio_impl::*;

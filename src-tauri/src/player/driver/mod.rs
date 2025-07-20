@@ -25,4 +25,7 @@ pub trait PlaybackDriver: Send {
 
     /// Seek to a specific position in the current track
     fn seek(&mut self, position: Duration) -> Result<()>;
+
+    /// Control whether spectrum computation should be performed
+    fn set_spectrum_computation(&mut self, should_compute: bool) -> Result<()>;
 }
