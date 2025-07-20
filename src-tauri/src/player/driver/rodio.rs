@@ -58,15 +58,6 @@ pub mod rodio_impl {
                             );
                             sink_new.append(progress_source);
                             sink = Some(sink_new);
-                            let completion_sender = progress_sender;
-                            let sink_len = sink.as_ref().unwrap().len();
-                            thread::spawn(move || loop {
-                                if sink_len == 0 {
-                                    let _ = completion_sender.send(PlaybackEvent::TrackCompleted);
-                                    break;
-                                }
-                                thread::sleep(Duration::from_millis(100));
-                            });
                         }
                         AudioCommand::Pause => {
                             if let Some(ref s) = sink {
@@ -238,6 +229,7 @@ pub mod rodio_impl {
 
                 Some(sample)
             } else {
+                let _ = self.playback_sender.send(PlaybackEvent::TrackCompleted);
                 None
             }
         }
