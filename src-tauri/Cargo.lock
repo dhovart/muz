@@ -280,19 +280,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
-name = "awedio"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f812beb902515bb6e810c36d0479032a24489b8a2b1e7fdb0e9725b003a7397"
-dependencies = [
- "cpal",
- "log",
- "qoaudio",
- "symphonia",
- "tokio",
-]
-
-[[package]]
 name = "backtrace"
 version = "0.3.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2305,7 +2292,6 @@ name = "muz"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "awedio",
  "rodio",
  "serde",
  "serde_json",
@@ -3117,12 +3103,6 @@ checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
 dependencies = [
  "unicode-ident",
 ]
-
-[[package]]
-name = "qoaudio"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf46b47dc3906b2c2bc928a04398dd483e66e3d0cc56913355ba236ab9fa2441"
 
 [[package]]
 name = "quick-xml"

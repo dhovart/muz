@@ -3,6 +3,9 @@ open PlaybackService
 let useSpectrumData = () => {
   let (spectrumData, setSpectrumData) = React.useState(() => [])
 
+  print_endline("Initializing spectrum data hook")
+  Js.Console.log(spectrumData)
+
   React.useEffect(() => {
     let subscription = async () => {
       try {

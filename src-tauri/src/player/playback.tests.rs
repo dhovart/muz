@@ -44,7 +44,8 @@ fn create_playback() -> Arc<Mutex<Playback>> {
     let playback_driver = TestPlaybackDriver::new();
     Playback::create(
         Box::new(playback_driver),
-        |_, _, _| {},
+        |_, _| {},
+        |_| {},
         |_, _| {},
         |_| {},
         |_| {},

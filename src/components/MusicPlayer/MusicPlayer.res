@@ -25,8 +25,16 @@ open UseProgressData
 @react.component
 let make = () => {
   let player = PlayerContext.usePlayer()
-  let (position, _framesPlayed) = useProgressData()
+  let (actualPosition, _framesPlayed) = useProgressData()
+  let (isDragging, setIsDragging) = React.useState(() => false)
+  let (dragPosition, setDragPosition) = React.useState(() => 0.0)
   let hasQueue = React.useMemo(() => player.queue->Array.length > 0, [player.queue])
+
+  let displayPosition = if isDragging {
+    dragPosition
+  } else {
+    actualPosition
+  }
 
   let invokePlayerCommand = async command => {
     try {
@@ -62,14 +70,9 @@ let make = () => {
   }, [player.state])
 
   let handleSeek = React.useCallback((value, currentTrack) => {
-    Js.log2("Seeking to position:", value)
     switch currentTrack {
     | Some(track) =>
-      Js.log2("Track found:", Track.displayTitle(track))
       let seekPositionMs = Track.getSeekPositionMs(track, value)
-      Js.log2("Calculated seek position:", seekPositionMs)
-
-      // Send seek command to backend
       invokePlayerCommand(Command.Seek(seekPositionMs))->ignore
     | None => Js.log("No current track for seeking")
     }
@@ -105,10 +108,17 @@ let make = () => {
       </div>
       <Slider
         className={MusicPlayerStyles.track}
-        value=position
+        value=displayPosition
         step=Number(0.001)
         max=1.0
-        onChange={(_, value, _) => handleSeek(value, player.currentTrack)->ignore}
+        onChange={(_, value, _) => {
+          setIsDragging(_ => true)
+          setDragPosition(_ => value)
+        }}
+        onChangeCommitted={(_, value) => {
+          setIsDragging(_ => false)
+          handleSeek(value, player.currentTrack)->ignore
+        }}
       />
       <div>
         <IconButton onClick={_ => handlePrev()->ignore} disabled={!player.hasHistory}>

@@ -40,7 +40,7 @@ impl PlaybackService {
 
     pub fn play_single_track(&self, track: Track) -> Result<PlaybackState> {
         let mut playback = self.playback.lock().unwrap();
-        
+
         playback.prepend(track);
         if playback.state == PlaybackState::Playing || playback.state == PlaybackState::Paused {
             playback.next()
@@ -49,7 +49,11 @@ impl PlaybackService {
         }
     }
 
-    pub fn play_album_tracks(&self, album_tracks: Vec<Track>, track_id: &str) -> Result<PlaybackState> {
+    pub fn play_album_tracks(
+        &self,
+        album_tracks: Vec<Track>,
+        track_id: &str,
+    ) -> Result<PlaybackState> {
         let mut playback = self.playback.lock().unwrap();
 
         let selected_track_id = album_tracks
@@ -74,10 +78,5 @@ impl PlaybackService {
         playback.clear_queue();
         playback.enqueue_multiple(tracks);
         Ok(())
-    }
-
-    pub fn set_spectrum_computation(&self, should_compute: bool) -> Result<()> {
-        let mut playback = self.playback.lock().unwrap();
-        playback.set_spectrum_computation(should_compute)
     }
 }

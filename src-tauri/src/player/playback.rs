@@ -277,10 +277,6 @@ impl Playback {
         Ok(self.state.clone())
     }
 
-    pub fn set_spectrum_computation(&mut self, should_compute: bool) -> Result<()> {
-        self.driver.set_spectrum_computation(should_compute)
-    }
-
     pub fn set_volume(&mut self, volume: f32) -> Result<PlaybackState> {
         self.driver
             .set_volume(volume.clamp(0.0, 1.0))
