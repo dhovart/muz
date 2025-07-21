@@ -2,8 +2,8 @@ open CssJs
 
 let container = style([
   padding(Spacing.containerPadding),
-  height(vh(100.0)),
-  overflowY(#auto),
+  height(#auto),
+  overflowY(#visible),
   backgroundColor(Color.backgroundColor),
 ])
 

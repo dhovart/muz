@@ -31,6 +31,13 @@ let displayArtist = (track: t) => {
   }
 }
 
+let displayAlbum = (track: t) => {
+  switch track.metadata.album {
+  | Some(album) => album
+  | None => "Unknown Album"
+  }
+}
+
 let getSeekPositionMs = (track: t, position: float) => {
   Js.log2("track:", track)
   Js.log2("getSeekPositionMs - position:", position)

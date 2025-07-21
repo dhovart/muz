@@ -3,7 +3,7 @@
 ## Architecture
 
 ### Architecture Improvements
-- [ ] **Async/Await Migration** - Convert synchronous operations to async using tokio
+- [x] **Async/Await Migration** - Convert synchronous operations to async using tokio
 - [ ] **Proper Error Handling** - Replace `eprintln!` with structured logging framework (tracing/log)
 - [ ] **Core Library Extraction** - Create `muz-core` crate with platform-agnostic music player logic
 - [ ] **Configuration Management** - Centralized, type-safe configuration system

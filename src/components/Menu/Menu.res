@@ -26,30 +26,28 @@ module Visualizer = {
 open Mui
 
 @react.component
-let make = (~currentPage: Route.t, ~onPageChange: Route.t => unit, ~onQueueToggle: unit => unit) => {
+let make = (
+  ~currentPage: Route.t,
+  ~onPageChange: Route.t => unit,
+  ~onQueueToggle: unit => unit,
+) => {
   <div className={MenuStyles.container}>
     <Box className={MenuStyles.menuBox}>
-      <IconButton 
-        onClick={_ => onPageChange(Route.MusicPlayer)} 
-        color={currentPage == Route.MusicPlayer ? Primary : Default}>
-        <MusicNote />
-      </IconButton>
-      <IconButton 
-        onClick={_ => onPageChange(Route.Library)} 
+      <IconButton
+        onClick={_ => onPageChange(Route.Library)}
         color={currentPage == Route.Library ? Primary : Default}>
         <LibraryMusic />
       </IconButton>
-      <IconButton 
-        onClick={_ => onQueueToggle()}>
+      <IconButton onClick={_ => onQueueToggle()}>
         <QueueMusic />
       </IconButton>
-      <IconButton 
-        onClick={_ => onPageChange(Route.Visualizer)} 
+      <IconButton
+        onClick={_ => onPageChange(Route.Visualizer)}
         color={currentPage == Route.Visualizer ? Primary : Default}>
         <Visualizer />
       </IconButton>
-      <IconButton 
-        onClick={_ => onPageChange(Route.Settings)} 
+      <IconButton
+        onClick={_ => onPageChange(Route.Settings)}
         color={currentPage == Route.Settings ? Primary : Default}>
         <Settings />
       </IconButton>

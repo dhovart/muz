@@ -1,8 +1,7 @@
-type t = MusicPlayer | Library | Settings | Visualizer
+type t = Library | Settings | Visualizer
 
 let toString = route =>
   switch route {
-  | MusicPlayer => "player"
   | Library => "library"
   | Settings => "settings"
   | Visualizer => "visualizer"
@@ -13,5 +12,5 @@ let fromString = str =>
   | "library" => Library
   | "settings" => Settings
   | "visualizer" => Visualizer
-  | _ => MusicPlayer
+  | _ => Library
   }

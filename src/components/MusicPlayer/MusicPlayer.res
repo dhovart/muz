@@ -87,53 +87,70 @@ let make = () => {
   }, [])
 
   <StyledEngineProvider injectFirst=true>
-    <Grid
-      className={MusicPlayerStyles.container}
-      justifyContent=Center
-      alignItems=Center
-      container=true
-      direction=Column>
-      <div>
-        {switch player.currentTrack {
-        | Some(track) =>
-          <>
-            <Typography variant={H6}> {track->Track.displayTitle->React.string} </Typography>
-            <Typography variant={Subtitle1}>
-              {track->Track.displayArtist->React.string}
-            </Typography>
-          </>
-
-        | None => <Typography variant={H6}> {React.string("No track selected")} </Typography>
-        }}
+    <div className={MusicPlayerStyles.playerContainer}>
+      <div className={MusicPlayerStyles.trackInfoSection}>
+        <div className={MusicPlayerStyles.albumArt}>
+          <img src="https://picsum.photos/200/200" alt="" />
+        </div>
+        <div className={MusicPlayerStyles.trackDetails}>
+          {switch player.currentTrack {
+          | Some(track) =>
+            <>
+              <div className={MusicPlayerStyles.title}>
+                {track->Track.displayTitle->React.string}
+              </div>
+              <div className={MusicPlayerStyles.artist}>
+                {track->Track.displayArtist->React.string}
+              </div>
+              <div className={MusicPlayerStyles.album}>
+                {track->Track.displayAlbum->React.string}
+              </div>
+            </>
+          | None =>
+            <>
+              <div className={MusicPlayerStyles.title}> {React.string("No track selected")} </div>
+              <div className={MusicPlayerStyles.album}> {React.string("No album")} </div>
+            </>
+          }}
+        </div>
       </div>
-      <Slider
-        className={MusicPlayerStyles.track}
-        value=displayPosition
-        step=Number(0.001)
-        max=1.0
-        onChange={(_, value, _) => {
-          setIsDragging(_ => true)
-          setDragPosition(_ => value)
-        }}
-        onChangeCommitted={(_, value) => {
-          setIsDragging(_ => false)
-          handleSeek(value, player.currentTrack)->ignore
-        }}
-      />
-      <div>
-        <IconButton onClick={_ => handlePrev()->ignore} disabled={!player.hasHistory}>
-          <SkipPrevious />
-        </IconButton>
-        <Fab
-          className={MusicPlayerStyles.playButton}
-          color={Primary}
-          onClick={_ => handlePlayPause()->ignore}>
-          {player.state == State.Playing ? <Pause /> : <PlayArrow />}
-        </Fab>
-        <IconButton onClick={_ => handleNext()->ignore} disabled={!hasQueue}>
-          <SkipNext />
-        </IconButton>
+      <div className={MusicPlayerStyles.controlsSection}>
+        <div className={MusicPlayerStyles.controls}>
+          <IconButton
+            className={MusicPlayerStyles.iconButton}
+            onClick={_ => handlePrev()->ignore}
+            disabled={!player.hasHistory}>
+            <SkipPrevious />
+          </IconButton>
+          <Fab
+            className={MusicPlayerStyles.playerPlayButton}
+            color={Primary}
+            onClick={_ => handlePlayPause()->ignore}>
+            {player.state == State.Playing ? <Pause /> : <PlayArrow />}
+          </Fab>
+          <IconButton
+            className={MusicPlayerStyles.iconButton}
+            onClick={_ => handleNext()->ignore}
+            disabled={!hasQueue}>
+            <SkipNext />
+          </IconButton>
+        </div>
+        <Slider
+          className={MusicPlayerStyles.trackSlider}
+          value=displayPosition
+          step=Number(0.001)
+          max=1.0
+          disabled={Belt.Option.isNone(player.currentTrack)}
+          onChange={(_, value, _) => {
+            setIsDragging(_ => true)
+            setDragPosition(_ => value)
+          }}
+          onChangeCommitted={(_, value) => {
+            setIsDragging(_ => false)
+            handleSeek(value, player.currentTrack)->ignore
+          }}
+        />
       </div>
-    </Grid>
+    </div>
   </StyledEngineProvider>
 }
