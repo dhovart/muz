@@ -161,7 +161,7 @@ impl Track {
             }
         }
 
-        let mut probed = match symphonia::default::get_probe().format(
+        let probed = match symphonia::default::get_probe().format(
             &hint,
             mss,
             &FormatOptions::default(),

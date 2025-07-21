@@ -1,10 +1,10 @@
 use anyhow::Result;
 use std::path::PathBuf;
-use thiserror::Error;
 
 use crate::player::track::{Track, SUPPORTED_EXTENSIONS};
 use std::ffi::OsStr;
-use std::fs;
+use tokio::fs;
+use std::boxed::Box;
 
 pub struct Library {
     pub path: PathBuf,
@@ -14,26 +14,26 @@ pub struct Library {
 
 impl Library {
     pub fn new(path: PathBuf, name: String) -> Self {
-        let mut library = Self {
+        Self {
             path,
             name,
             tracks: Vec::new(),
-        };
-
-        library.build_tracks();
-
-        library
+        }
     }
 
-    fn build_tracks(&mut self) {
+    pub async fn initialize(&mut self) {
+        self.build_tracks().await;
+    }
+
+    async fn build_tracks(&mut self) {
         self.tracks.clear();
         let path = self.path.clone();
-        self.scan_directory_recursive(&path);
+        self.scan_directory_recursive(&path).await;
     }
 
-    fn scan_directory_recursive(&mut self, dir_path: &PathBuf) {
-        if let Ok(entries) = fs::read_dir(dir_path) {
-            for entry in entries.flatten() {
+    async fn scan_directory_recursive(&mut self, dir_path: &PathBuf) {
+        if let Ok(mut entries) = fs::read_dir(dir_path).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
                 let path = entry.path();
                 if path.is_file() {
                     if let Some(ext) = path.extension().and_then(OsStr::to_str) {
@@ -43,7 +43,7 @@ impl Library {
                         }
                     }
                 } else if path.is_dir() {
-                    self.scan_directory_recursive(&path);
+                    Box::pin(self.scan_directory_recursive(&path)).await;
                 }
             }
         }
@@ -81,8 +81,8 @@ impl Library {
         }
     }
 
-    pub fn rescan(&mut self) {
-        self.build_tracks();
+    pub async fn rescan(&mut self) {
+        self.build_tracks().await;
     }
 }
 

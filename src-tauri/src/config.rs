@@ -1,8 +1,8 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
+use tokio::fs;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -18,29 +18,29 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    pub fn load(app_handle: &AppHandle) -> Result<Self> {
+    pub async fn load(app_handle: &AppHandle) -> Result<Self> {
         let config_path = Self::get_config_path(app_handle)?;
 
         if config_path.exists() {
-            let content = fs::read_to_string(&config_path)?;
+            let content = fs::read_to_string(&config_path).await?;
             let config: AppConfig = serde_json::from_str(&content)?;
             Ok(config)
         } else {
             let default_config = AppConfig::default();
-            default_config.save(app_handle)?;
+            default_config.save(app_handle).await?;
             Ok(default_config)
         }
     }
 
-    pub fn save(&self, app_handle: &AppHandle) -> Result<()> {
+    pub async fn save(&self, app_handle: &AppHandle) -> Result<()> {
         let config_path = Self::get_config_path(app_handle)?;
 
         if let Some(parent) = config_path.parent() {
-            fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent).await?;
         }
 
         let content = serde_json::to_string_pretty(self)?;
-        fs::write(&config_path, content)?;
+        fs::write(&config_path, content).await?;
         Ok(())
     }
 
