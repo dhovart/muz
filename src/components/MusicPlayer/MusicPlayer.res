@@ -57,15 +57,10 @@ let make = () => {
 
   let handlePlayPause = React.useCallback(() => {
     switch player.state {
-    | State.Playing => {
-        player.dispatch(SetState(State.Paused))
-        invokePlayerCommand(Command.Pause)->ignore
-      }
+    | State.Playing => invokePlayerCommand(Command.Pause)->ignore
     | State.Stopped
-    | State.Paused => {
-        player.dispatch(SetState(State.Playing))
-        invokePlayerCommand(Command.Play)->ignore
-      }
+    | State.Paused =>
+      invokePlayerCommand(Command.Play)->ignore
     }
   }, [player.state])
 

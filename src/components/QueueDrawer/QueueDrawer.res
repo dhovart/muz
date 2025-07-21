@@ -13,7 +13,12 @@ let make = (~isOpen: bool, ~onClose: unit => unit) => {
   let player = PlayerContext.usePlayer()
 
   let handleTrackSelect = React.useCallback0((track: Track.t) => {
-    PlaybackService.selectTrackFromQueue(track.id)->ignore
+    PlaybackService.selectTrackFromQueue(track.id)
+    ->Promise.then(state => {
+      player.dispatch(SetState(state))
+      Promise.resolve()
+    })
+    ->ignore
   })
 
   let renderCurrentTrack = (track: Track.t) => {

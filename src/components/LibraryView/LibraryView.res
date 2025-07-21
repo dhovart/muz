@@ -4,6 +4,7 @@ open LibraryViewStyles
 let make = () => {
   let (albumsByArtist, setAlbumsByArtist) = React.useState(_ => Js.Dict.empty())
   let (loading, setLoading) = React.useState(_ => true)
+  let player = PlayerContext.usePlayer()
 
   let loadTracks = React.useCallback0(() => {
     setLoading(_ => true)
@@ -26,7 +27,12 @@ let make = () => {
     album: option<string>,
     artist: option<string>,
   ) => {
-    PlaybackService.playFromLibrary(track.id, ~album, ~artist, ())->ignore
+    PlaybackService.playFromLibrary(track.id, ~album, ~artist, ())
+    ->Promise.then(state => {
+      player.dispatch(SetState(state))
+      Promise.resolve()
+    })
+    ->ignore
   })
 
   React.useEffect0(() => {

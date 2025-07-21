@@ -24,7 +24,7 @@ let playerContainer = style([
   position(#fixed),
   bottom(zero),
   left(zero),
-  zIndex(1000),
+  zIndex(1),
 ])
 
 let trackInfoSection = style([
