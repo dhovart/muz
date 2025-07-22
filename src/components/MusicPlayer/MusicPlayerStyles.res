@@ -21,7 +21,6 @@ let playerContainer = style([
   flexDirection(row),
   alignItems(center),
   gap(Spacing.lg),
-  position(#fixed),
   bottom(zero),
   left(zero),
   zIndex(1),

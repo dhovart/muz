@@ -23,6 +23,11 @@ module Visualizer = {
   external make: (~className: string=?) => React.element = "default"
 }
 
+module ViewColumn = {
+  @react.component @module("@mui/icons-material/ViewColumn")
+  external make: (~className: string=?) => React.element = "default"
+}
+
 open Mui
 
 @react.component
@@ -37,6 +42,11 @@ let make = (
         onClick={_ => onPageChange(Route.Library)}
         color={currentPage == Route.Library ? Primary : Default}>
         <LibraryMusic />
+      </IconButton>
+      <IconButton
+        onClick={_ => onPageChange(Route.MillerColumns)}
+        color={currentPage == Route.MillerColumns ? Primary : Default}>
+        <ViewColumn />
       </IconButton>
       <IconButton onClick={_ => onQueueToggle()}>
         <QueueMusic />

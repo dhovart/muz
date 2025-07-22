@@ -23,7 +23,7 @@ let make = () => {
   let (state, dispatch) = PlayerContext.usePlayerReducer()
 
   <Mui.ThemeProvider theme={Theme(Theme.theme)}>
-    <Mui.CssBaseline />
+    <Mui.CssBaseline enableColorScheme=true />
     <PlayerProvider state={state} dispatch={dispatch}>
       <div className={appContainer}>
         {currentPage !== Route.Visualizer
@@ -36,6 +36,7 @@ let make = () => {
         <div className={contentArea}>
           {switch currentPage {
           | Route.Library => <LibraryPage />
+          | Route.MillerColumns => <MillerColumnsView />
           | Route.Settings => <SettingsPage />
           | Route.Visualizer => <VisualizerPage onExit={() => handlePageChange(Route.Library)} />
           }}
