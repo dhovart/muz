@@ -32,7 +32,9 @@
     "motion": "^12.23.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "rescript": "^11.1.4"
+    "rescript": "^11.1.4",
+    "rescript-dnd": "^6.0.0",
+    "rescript-webapi": "^0.10.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

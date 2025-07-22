@@ -154,7 +154,8 @@ pub fn run() {
             rescan_library,
             get_albums_by_artist,
             select_track_from_queue,
-            play_from_library
+            play_from_library,
+            reorder_queue
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

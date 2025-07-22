@@ -11,7 +11,22 @@ let trackRow = style([
   borderRadius(Spacing.sm),
   cursor(#pointer),
   alignItems(#center),
+  userSelect(#none),
   hover([backgroundColor(Color.queueItemHover)]),
+])
+
+let queueTrackRow = style([
+  display(#grid),
+  unsafe("gridTemplateColumns", "1fr 40px"),
+  gap(Spacing.md),
+  padding2(~v=Spacing.md, ~h=Spacing.md),
+  backgroundColor(Color.queueItem),
+  borderRadius(Spacing.sm),
+  cursor(#grab),
+  alignItems(#center),
+  userSelect(#none),
+  hover([backgroundColor(Color.queueItemHover)]),
+  active([cursor(#grabbing)]),
 ])
 
 let currentTrackRow = style([
@@ -30,6 +45,7 @@ let currentTrackRow = style([
   borderRadius(Spacing.md),
   cursor(#pointer),
   alignItems(#center),
+  userSelect(#none),
   border(Spacing.borderMedium, #solid, Color.primaryLight),
   hover([
     unsafe(
@@ -40,6 +56,36 @@ let currentTrackRow = style([
       Color.hexString(Color.primary) ++ " 100%)",
     ),
   ]),
+])
+
+let queueCurrentTrackRow = style([
+  display(#grid),
+  unsafe("gridTemplateColumns", "1fr 40px"),
+  gap(Spacing.md),
+  padding2(~v=Spacing.md, ~h=Spacing.md),
+  unsafe(
+    "background",
+    "linear-gradient(135deg, " ++
+    Color.hexString(Color.primary) ++
+    " 0%, " ++
+    Color.hexString(Color.primaryDark) ++ " 100%)",
+  ),
+  color(Color.textOnPrimary),
+  borderRadius(Spacing.md),
+  cursor(#grab),
+  alignItems(#center),
+  userSelect(#none),
+  border(Spacing.borderMedium, #solid, Color.primaryLight),
+  hover([
+    unsafe(
+      "background",
+      "linear-gradient(135deg, " ++
+      Color.hexString(Color.primaryDark) ++
+      " 0%, " ++
+      Color.hexString(Color.primary) ++ " 100%)",
+    ),
+  ]),
+  active([cursor(#grabbing)]),
 ])
 
 let trackIndex = style([fontSize(rem(1.)), fontWeight(#medium), textAlign(#center)])

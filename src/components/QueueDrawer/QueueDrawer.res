@@ -21,6 +21,41 @@ let make = (~isOpen: bool, ~onClose: unit => unit) => {
     ->ignore
   })
 
+  let handleDndReorder = React.useCallback1(
+    (result: Dnd.result<DndProvider.TrackItem.t, DndProvider.QueueContainer.t>) => {
+      switch result {
+      | Some(SameContainer(draggedTrackId, placement)) => {
+          let tracks = player.queue
+          let oldIndex = tracks->Array.findIndex(track => track.id === draggedTrackId)
+
+          if oldIndex !== -1 {
+            let newIndex = switch placement {
+            | Before(beforeTrackId) => {
+                let beforeIndex = tracks->Array.findIndex(track => track.id === beforeTrackId)
+                if beforeIndex !== -1 {
+                  if oldIndex < beforeIndex {
+                    beforeIndex - 1
+                  } else {
+                    beforeIndex
+                  }
+                } else {
+                  oldIndex
+                }
+              }
+            | Last => Array.length(tracks) - 1
+            }
+
+            if oldIndex !== newIndex {
+              PlaybackService.reorderQueue(oldIndex, newIndex)->ignore
+            }
+          }
+        }
+      | _ => ()
+      }
+    },
+    [player.queue],
+  )
+
   let renderCurrentTrack = (track: Track.t) => {
     let initial = {"opacity": 0, "y": -20}
     let animate = {"opacity": 1, "y": 0}
@@ -64,12 +99,14 @@ let make = (~isOpen: bool, ~onClose: unit => unit) => {
                 | None => React.null
                 }}
                 {player.queue->Array.length > 0
-                  ? <TrackList
-                      tracks=player.queue
-                      currentTrack=player.currentTrack
-                      onTrackSelect={track => handleTrackSelect(track)}
-                      context="queue"
-                    />
+                  ? <DndProvider onReorder=handleDndReorder>
+                      <SortableTrackList
+                        tracks=player.queue
+                        currentTrack=player.currentTrack
+                        onTrackSelect={track => handleTrackSelect(track)}
+                        context="queue"
+                      />
+                    </DndProvider>
                   : React.null}
               </LayoutGroup>
             </div>}

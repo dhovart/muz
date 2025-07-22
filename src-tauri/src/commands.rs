@@ -194,3 +194,21 @@ pub async fn play_from_library(
             .map_err(PlaybackError::from)
     }
 }
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderQueuePayload {
+    pub old_index: usize,
+    pub new_index: usize,
+}
+
+#[tauri::command]
+pub fn reorder_queue(
+    state: State<'_, AppState>,
+    payload: ReorderQueuePayload,
+) -> Result<(), PlaybackError> {
+    state
+        .playback_service
+        .reorder_queue(payload.old_index, payload.new_index)
+        .map_err(PlaybackError::from)
+}

@@ -84,4 +84,10 @@ impl PlaybackService {
         playback.enqueue_multiple(tracks);
         Ok(())
     }
+
+    pub fn reorder_queue(&self, old_index: usize, new_index: usize) -> Result<()> {
+        let mut playback = self.playback.lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock playback: {}", e))?;
+        playback.reorder_queue(old_index, new_index)
+    }
 }

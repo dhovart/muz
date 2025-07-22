@@ -55,3 +55,7 @@ let playFromLibrary = async (
   let result = await Tauri.invoke("play_from_library", payload)
   State.fromString(result)
 }
+
+let reorderQueue = (oldIndex: int, newIndex: int): Promise.t<unit> => {
+  Tauri.invoke("reorder_queue", {"payload": {"oldIndex": oldIndex, "newIndex": newIndex}})
+}

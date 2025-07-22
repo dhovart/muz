@@ -19,7 +19,9 @@
     "rescript-vitest",
     "bs-css",
     "bs-css-emotion",
-    "@rescript-mui/material"
+    "@rescript-mui/material",
+    "rescript-dnd",
+    "rescript-webapi"
   ],
   "bsc-flags": [
     "-open RescriptCore"

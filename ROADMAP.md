@@ -4,7 +4,7 @@
 
 ### Architecture Improvements
 - [x] **Async/Await Migration** - Convert synchronous operations to async using tokio
-- [ ] **Proper Error Handling** - Replace `eprintln!` with structured logging framework (tracing/log)
+- [x] **Proper Error Handling** - Replace `eprintln!` with structured logging framework (tracing/log)
 - [ ] **Core Library Extraction** - Create `muz-core` crate with platform-agnostic music player logic
 - [ ] **Configuration Management** - Centralized, type-safe configuration system
 
@@ -16,7 +16,7 @@
 ## Core Music Player Features
 
 ### Queue Management
-- [ ] **Queue Reordering** - Drag & drop to reorder tracks in queue
+- [x] **Queue Reordering** - Drag & drop to reorder tracks in queue
 - [ ] **Shuffle Mode** - Randomize track playback order
 - [ ] **Repeat Modes** - None, One Track, All Tracks
 - [ ] **Queue Persistence** - Save and restore queue state on app restart

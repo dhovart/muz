@@ -318,6 +318,29 @@ impl Playback {
         }
         Err(anyhow!("Track not found in queue"))
     }
+
+    pub fn reorder_queue(&mut self, old_index: usize, new_index: usize) -> Result<()> {
+        if let Some(queue) = &mut self.queue {
+            let queue_len = queue.len();
+            
+            if old_index >= queue_len || new_index >= queue_len {
+                return Err(anyhow!("Index out of bounds for queue reordering"));
+            }
+            
+            if old_index != new_index {
+                queue.move_item(old_index, new_index);
+                
+                // Emit queue changed event
+                self.event_sender
+                    .send(PlaybackEvent::QueueChanged(self.queue()))
+                    .map_err(|e| anyhow!("Failed to send queue changed event: {}", e))?;
+            }
+            
+            Ok(())
+        } else {
+            Err(anyhow!("No queue available for reordering"))
+        }
+    }
 }
 
 impl Drop for Playback {
