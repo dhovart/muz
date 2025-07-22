@@ -62,20 +62,20 @@ impl Playback {
             for event in event_receiver {
                 match event {
                     PlaybackEvent::TrackCompleted => {
-                        println!("Track completed event received");
+                        tracing::info!("Track completed event received");
                         if let Ok(mut playback) = playback_clone.lock() {
-                            println!("Playing next track");
+                            tracing::info!("Playing next track");
                             playback
                                 .next()
                                 .map_err(|e| {
-                                    eprintln!("Error moving to next track: {e}");
+                                    tracing::error!("Error moving to next track: {e}");
                                     e
                                 })
                                 .ok();
                         }
                     }
                     PlaybackEvent::FailedOpeningFile(err) => {
-                        println!("Failed to open file: {err}");
+                        tracing::error!("Failed to open file: {err}");
                     }
                     PlaybackEvent::HistoryUpdate => {
                         if let Ok(playback) = playback_clone.lock() {
@@ -106,7 +106,7 @@ impl Playback {
                     PlaybackEvent::Shutdown => break,
                 }
             }
-            println!("Playback event loop shutting down");
+            tracing::info!("Playback event loop shutting down");
         });
 
         playback
@@ -123,7 +123,7 @@ impl Playback {
         if let Some(queue) = &mut self.queue {
             queue.enqueue(track);
         } else {
-            println!("Creating queue");
+            tracing::debug!("Creating queue");
             let mut queue = Queue::new();
             queue.enqueue(track);
             self.queue = Some(queue);
@@ -137,7 +137,7 @@ impl Playback {
         if let Some(queue) = &mut self.queue {
             queue.prepend(track);
         } else {
-            println!("Creating queue");
+            tracing::debug!("Creating queue");
             let mut queue = Queue::new();
             queue.enqueue(track);
             self.queue = Some(queue);
@@ -322,9 +322,9 @@ impl Playback {
 
 impl Drop for Playback {
     fn drop(&mut self) {
-        println!("Playback is being dropped, sending shutdown event");
+        tracing::info!("Playback is being dropped, sending shutdown event");
         if let Err(e) = self.event_sender.send(PlaybackEvent::Shutdown) {
-            eprintln!("Failed to send shutdown event during drop: {}", e);
+            tracing::error!("Failed to send shutdown event during drop: {}", e);
         }
     }
 }

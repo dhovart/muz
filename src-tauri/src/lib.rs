@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::player::{
     driver::factory::{DefaultDriverFactory, PlaybackDriverFactory},
@@ -106,7 +107,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn Error>> {
     if let Ok(mut playback_guard) = playback.lock() {
         playback_guard.enqueue_multiple(tracks.clone());
     } else {
-        eprintln!("Failed to lock playback");
+        tracing::error!("Failed to lock playback");
     }
 
     let playback_service: PlaybackService = PlaybackService::new(playback);
@@ -130,6 +131,14 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn Error>> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "muz=debug,info".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     Builder::default()
         .setup(setup_app)
         .plugin(tauri_plugin_opener::init())

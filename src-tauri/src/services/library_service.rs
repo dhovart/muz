@@ -43,7 +43,10 @@ impl LibraryService {
                 .as_ref()
                 .and_then(|m| m.album.clone())
                 .unwrap_or_else(|| "Unknown Album".to_string());
-            grouped.entry(album).or_insert_with(Vec::new).push(track.clone());
+            grouped
+                .entry(album)
+                .or_insert_with(Vec::new)
+                .push(track.clone());
         }
 
         Ok(grouped)

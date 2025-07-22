@@ -39,10 +39,5 @@ let displayAlbum = (track: t) => {
 }
 
 let getSeekPositionMs = (track: t, position: float) => {
-  Js.log2("track:", track)
-  Js.log2("getSeekPositionMs - position:", position)
-  Js.log2("getSeekPositionMs - duration_ms:", track.durationMs)
-  let positionMs = Float.toInt(Float.fromInt(track.durationMs) *. position)
-  Js.log2("getSeekPositionMs output:", positionMs)
-  positionMs
+  Float.toInt(Float.fromInt(track.durationMs) *. position)
 }

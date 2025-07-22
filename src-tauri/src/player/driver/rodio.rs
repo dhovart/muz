@@ -84,10 +84,10 @@ pub mod rodio_impl {
                             if let Some(ref s) = sink {
                                 match s.try_seek(position) {
                                     Ok(_) => {
-                                        println!("Successfully seeked to {:?}", position);
+                                        tracing::debug!("Successfully seeked to {:?}", position);
                                     }
                                     Err(e) => {
-                                        println!("Failed to seek: {:?}", e);
+                                        tracing::error!("Failed to seek: {:?}", e);
                                     }
                                 }
                             }

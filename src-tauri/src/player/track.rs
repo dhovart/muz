@@ -42,7 +42,7 @@ impl Track {
     pub fn new<P: Into<PathBuf> + AsRef<Path>>(path: P) -> Self {
         let (total_frames, duration_ms, mut metadata) = Self::get_metadata(path.as_ref());
         if total_frames.is_none() {
-            eprintln!("Failed to get total frames for track: {:?}", path.as_ref());
+            tracing::error!("Failed to get total frames for track: {:?}", path.as_ref());
         }
         if let Some(metadata) = metadata.as_mut() {
             if metadata.title.is_none() {
@@ -148,7 +148,7 @@ impl Track {
         let file = match File::open(path) {
             Ok(f) => f,
             Err(_) => {
-                eprintln!("Failed to open file: {:?}", path);
+                tracing::error!("Failed to open file: {:?}", path);
                 return (None, None, None);
             }
         };
@@ -169,7 +169,7 @@ impl Track {
         ) {
             Ok(p) => p,
             Err(_) => {
-                eprintln!("Failed to probe file: {:?}", path);
+                tracing::error!("Failed to probe file: {:?}", path);
                 return (None, None, None);
             }
         };
