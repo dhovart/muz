@@ -5,7 +5,7 @@ open AppStyles
 
 @react.component
 let make = () => {
-  let (currentPage, setCurrentPage) = React.useState(() => Route.Library)
+  let (currentPage, setCurrentPage) = React.useState(() => Route.MillerColumns)
   let (isQueueDrawerOpen, setIsQueueDrawerOpen) = React.useState(() => false)
 
   let handlePageChange = (newPage: Route.t) => {
@@ -35,10 +35,10 @@ let make = () => {
           : React.null}
         <div className={contentArea}>
           {switch currentPage {
-          | Route.Library => <LibraryPage />
           | Route.MillerColumns => <MillerColumnsView />
           | Route.Settings => <SettingsPage />
-          | Route.Visualizer => <VisualizerPage onExit={() => handlePageChange(Route.Library)} />
+          | Route.Visualizer =>
+            <VisualizerPage onExit={() => handlePageChange(Route.MillerColumns)} />
           }}
         </div>
         <MusicPlayer />

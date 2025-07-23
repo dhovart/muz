@@ -17,12 +17,30 @@ let reducer = (state, action) => {
   switch action {
   | SetArtistsData(data) => {...state, artistsData: Some(data)}
   | SelectArtist(artist) => {
-      ...state,
-      selectedPath: {artist: Some(artist), album: None},
+      let newArtist = state.selectedPath.artist === Some(artist) ? None : Some(artist)
+      {
+        ...state,
+        selectedPath: {artist: newArtist, album: None},
+      }
     }
   | SelectAlbum(album) => {
-      ...state,
-      selectedPath: {...state.selectedPath, album: Some(album)},
+      let newAlbum = state.selectedPath.album === Some(album) ? None : Some(album)
+      let newArtist = switch (newAlbum, state.artistsData) {
+      | (Some(selectedAlbum), Some(data)) =>
+        Js.Dict.entries(data)
+        ->Belt.Array.getBy(((_, albums)) => 
+          switch Js.Dict.get(albums, selectedAlbum) {
+          | Some(_) => true
+          | None => false
+          }
+        )
+        ->Belt.Option.map(((artist, _)) => artist)
+      | _ => state.selectedPath.artist
+      }
+      {
+        ...state,
+        selectedPath: {artist: newArtist, album: newAlbum},
+      }
     }
   }
 }
@@ -99,11 +117,49 @@ let make = () => {
   let artists = getArtists()
   let albums = switch state.selectedPath.artist {
   | Some(artist) => getAlbumsForArtist(artist)
-  | None => []
+  | None =>
+    switch state.artistsData {
+    | Some(data) => {
+        let allAlbumNames =
+          Js.Dict.values(data)->Belt.Array.reduce([], (acc, albums) =>
+            Belt.Array.concat(acc, Js.Dict.keys(albums))
+          )
+        Js.Array2.sortInPlaceWith(allAlbumNames, compare)->ignore
+        allAlbumNames
+      }
+    | None => []
+    }
   }
   let tracks = switch (state.selectedPath.artist, state.selectedPath.album) {
   | (Some(artist), Some(album)) => getTracksForAlbum(artist, album)
-  | _ => []
+  | (None, Some(album)) =>
+    switch state.artistsData {
+    | Some(data) =>
+      Js.Dict.entries(data)->Belt.Array.reduce([], (acc, (_, albums)) =>
+        switch Js.Dict.get(albums, album) {
+        | Some(tracks) => Belt.Array.concat(acc, tracks)
+        | None => acc
+        }
+      )
+    | None => []
+    }
+  | (Some(artist), None) =>
+    switch state.artistsData {
+    | Some(data) =>
+      switch Js.Dict.get(data, artist) {
+      | Some(albums) => Js.Dict.values(albums)->Belt.Array.concatMany
+      | None => []
+      }
+    | None => []
+    }
+  | (None, None) =>
+    switch state.artistsData {
+    | Some(data) =>
+      Js.Dict.values(data)->Belt.Array.reduce([], (acc, albums) =>
+        Belt.Array.concat(acc, Js.Dict.values(albums)->Belt.Array.concatMany)
+      )
+    | None => []
+    }
   }
 
   <div className={MillerColumnsViewStyles.container}>
@@ -115,24 +171,26 @@ let make = () => {
         onSelect={artist => dispatch(SelectArtist(artist))}
         currentTrack={currentTrack}
       />
-      {switch state.selectedPath.artist {
-      | Some(_) =>
-        <MillerColumn
-          title="Albums"
-          items={albums->Belt.Array.map(album => (album, album))}
-          selectedItem={state.selectedPath.album}
-          onSelect={album => dispatch(SelectAlbum(album))}
-          currentTrack={currentTrack}
-        />
-      | None => React.null
-      }}
-      {switch (state.selectedPath.artist, state.selectedPath.album) {
-      | (Some(artist), Some(album)) =>
-        <MillerColumnTracks
-          title="Tracks" tracks={tracks} artist={artist} album={album} currentTrack={currentTrack}
-        />
-      | _ => React.null
-      }}
+      <MillerColumn
+        title="Albums"
+        items={albums->Belt.Array.map(album => (album, album))}
+        selectedItem={state.selectedPath.album}
+        onSelect={album => dispatch(SelectAlbum(album))}
+        currentTrack={currentTrack}
+      />
+      <MillerColumnTracks
+        title="Tracks"
+        tracks={tracks}
+        artist={switch state.selectedPath.artist {
+        | Some(a) => a
+        | None => ""
+        }}
+        album={switch state.selectedPath.album {
+        | Some(a) => a
+        | None => ""
+        }}
+        currentTrack={currentTrack}
+      />
     </div>
   </div>
 }

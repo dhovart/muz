@@ -131,7 +131,7 @@ let trackSlider = style([
 ])
 
 let playerPlayButton = style([
-  width(Spacing.xxl), // 48px
+  width(Spacing.xxl),
   height(Spacing.xxl),
   minWidth(Spacing.xxl),
   color(Color.textOnPrimary),
@@ -139,7 +139,7 @@ let playerPlayButton = style([
 ])
 
 let iconButton = style([
-  width(Spacing.xl), // 32px
+  width(Spacing.xl),
   height(Spacing.xl),
   minWidth(Spacing.xl),
   padding(Spacing.xs),

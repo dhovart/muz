@@ -8,11 +8,6 @@ module MusicNote = {
   external make: (~className: string=?) => React.element = "default"
 }
 
-module LibraryMusic = {
-  @react.component @module("@mui/icons-material/LibraryMusic")
-  external make: (~className: string=?) => React.element = "default"
-}
-
 module QueueMusic = {
   @react.component @module("@mui/icons-material/QueueMusic")
   external make: (~className: string=?) => React.element = "default"
@@ -38,11 +33,6 @@ let make = (
 ) => {
   <div className={MenuStyles.container}>
     <Box className={MenuStyles.menuBox}>
-      <IconButton
-        onClick={_ => onPageChange(Route.Library)}
-        color={currentPage == Route.Library ? Primary : Default}>
-        <LibraryMusic />
-      </IconButton>
       <IconButton
         onClick={_ => onPageChange(Route.MillerColumns)}
         color={currentPage == Route.MillerColumns ? Primary : Default}>

@@ -9,7 +9,9 @@ let make = (
   let player = PlayerContext.usePlayer()
 
   let playTrack = (track: Track.t) => {
-    PlaybackService.playFromLibrary(track.id, ~album=Some(album), ~artist=Some(artist), ())
+    let maybeAlbum = album === "" ? None : Some(album)
+    let maybeArtist = artist === "" ? None : Some(artist)
+    PlaybackService.playFromLibrary(track.id, ~album=maybeAlbum, ~artist=maybeArtist, ())
     ->Promise.then(state => {
       player.dispatch(SetState(state))
       Promise.resolve()
